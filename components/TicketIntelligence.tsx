@@ -2,16 +2,9 @@
 
 import { useState, useEffect } from 'react'
 
-interface Ticket {
-  id: number
-  subject: string
-  priority: number
-  status: number
-}
-
 export default function TicketIntelligence() {
   const [stats, setStats] = useState({ critical: 0, open: 0, avgTime: '2.5 days' })
-  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [tickets, setTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -21,20 +14,13 @@ export default function TicketIntelligence() {
         const data = await response.json()
         const allTickets = data.tickets || []
 
-        const critical = allTickets.filter((t: Ticket) => t.priority === 4).length
-        const open = allTickets.filter((t: Ticket) => t.status === 2).length
-
         setStats({
-          critical,
-          open,
+          critical: allTickets.length,
+          open: allTickets.length,
           avgTime: '2.5 days',
         })
 
-        // Get top critical tickets
-        const topCritical = allTickets
-          .filter((t: Ticket) => t.priority === 4)
-          .slice(0, 3)
-        setTickets(topCritical)
+        setTickets(allTickets.slice(0, 3))
       } catch (error) {
         console.error('Error loading tickets:', error)
       } finally {
@@ -44,24 +30,6 @@ export default function TicketIntelligence() {
 
     loadTickets()
   }, [])
-
-  const getPriorityColor = (priority: number) => {
-    switch (priority) {
-      case 4: return { bg: '#fee2e2', border: '#ef4444', text: '#991b1b' }
-      case 3: return { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' }
-      case 2: return { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' }
-      default: return { bg: '#f0fdf4', border: '#22c55e', text: '#15803d' }
-    }
-  }
-
-  const getPriorityLabel = (priority: number) => {
-    switch (priority) {
-      case 4: return '🔴 URGENT'
-      case 3: return '🟡 HIGH'
-      case 2: return '🔵 MEDIUM'
-      default: return '🟢 LOW'
-    }
-  }
 
   return (
     <div
@@ -77,12 +45,12 @@ export default function TicketIntelligence() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
         <div style={{ padding: '16px', backgroundColor: '#fef2f2', borderRadius: '6px', borderLeft: '4px solid #ef4444' }}>
-          <p style={{ fontSize: '12px', color: '#7f1d1d', fontWeight: '600' }}>Critical Tickets</p>
+          <p style={{ fontSize: '12px', color: '#7f1d1d', fontWeight: '600' }}>Total Tickets</p>
           <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#991b1b' }}>{stats.critical}</p>
         </div>
 
         <div style={{ padding: '16px', backgroundColor: '#f0fdf4', borderRadius: '6px', borderLeft: '4px solid #22c55e' }}>
-          <p style={{ fontSize: '12px', color: '#15803d', fontWeight: '600' }}>Open Tickets</p>
+          <p style={{ fontSize: '12px', color: '#15803d', fontWeight: '600' }}>From Freshdesk</p>
           <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#15803d' }}>{stats.open}</p>
         </div>
 
@@ -96,31 +64,28 @@ export default function TicketIntelligence() {
         <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px' }}>📥 Loading Freshdesk tickets...</p>
       ) : tickets.length > 0 ? (
         <>
-          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', color: '#111827' }}>Critical Issues from Freshdesk:</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', color: '#111827' }}>Recent Tickets:</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {tickets.map((ticket) => {
-              const colors = getPriorityColor(ticket.priority)
-              return (
-                <div
-                  key={ticket.id}
-                  style={{
-                    padding: '12px',
-                    backgroundColor: colors.bg,
-                    borderLeft: `4px solid ${colors.border}`,
-                    borderRadius: '4px',
-                  }}
-                >
-                  <p style={{ fontSize: '13px', fontWeight: '600', color: colors.text }}>
-                    {getPriorityLabel(ticket.priority)} #{ticket.id}
-                  </p>
-                  <p style={{ fontSize: '12px', color: colors.text, marginTop: '4px' }}>{ticket.subject}</p>
-                </div>
-              )
-            })}
+            {tickets.map((ticket: any, idx: number) => (
+              <div
+                key={idx}
+                style={{
+                  padding: '12px',
+                  backgroundColor: '#f3f4f6',
+                  borderLeft: '4px solid #3b82f6',
+                  borderRadius: '4px',
+                }}
+              >
+                <p style={{ fontSize: '13px', fontWeight: '600', color: '#111827' }}>
+                  #{ticket.id}
+                </p>
+                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{ticket.subject}</p>
+              </div>
+            ))}
           </div>
         </>
       ) : (
-        <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px' }}>✅ No critical tickets</p>
+        <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px' }}>✅ No tickets</p>
       )}
     </div>
   )
