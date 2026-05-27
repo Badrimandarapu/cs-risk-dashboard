@@ -19,17 +19,19 @@ export async function GET() {
     const statuses = [...new Set(tickets.map((t: any) => t.status))]
 
     return NextResponse.json({
-      totalTickets: tickets.length,
-      uniquePriorities: priorities,
-      uniqueStatuses: statuses,
-      sampleTickets: tickets.slice(0, 3).map((t: any) => ({
-        id: t.id,
-        subject: t.subject,
-        priority: t.priority,
-        status: t.status,
-      })),
+      tickets: tickets,
+      debug: {
+        totalTickets: tickets.length,
+        uniquePriorities: priorities,
+        uniqueStatuses: statuses,
+        sample: tickets.slice(0, 3),
+      },
     })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('Freshdesk Error:', error)
+    return NextResponse.json({ 
+      tickets: [],
+      error: error.message 
+    }, { status: 200 })
   }
 }
