@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenAI } from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { actions: ['TODAY: Schedule account review call'] },
+        { status: 200 }
+      )
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+
     const { account, riskScore } = await request.json()
 
     const prompt = `You are a CS Manager. Generate 2-3 specific actions for this account.
