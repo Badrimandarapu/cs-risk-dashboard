@@ -71,7 +71,7 @@ export default function Home() {
     <div style={{ padding: '32px' }}>
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '36px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>📊 CS Risk Intelligence Dashboard</h1>
+        <h1 style={{ fontSize: '36px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>📊 CS Risk Intelligence Dashboard v2</h1>
         <p style={{ fontSize: '16px', color: '#6b7280' }}>Real-time risk intelligence (Google Sheets + Freshdesk)</p>
       </div>
 
