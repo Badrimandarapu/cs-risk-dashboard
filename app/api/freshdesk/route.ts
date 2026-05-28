@@ -2,29 +2,34 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const apiKey = 'U6ZNaOkxNplnfPesmJ0I'
+    const apiKey = 'WwlSY1ncwyBK5e7MXKv0'  // New key
     const domain = 'increff.freshdesk.com'
     const auth = Buffer.from(`${apiKey}:X`).toString('base64')
 
-    // Match EXACT Postman headers
-    const ticketsRes = await fetch(`https://${domain}/api/v2/tickets`, {
-      method: 'GET',
+    console.log('[API] Testing new key...')
+    console.log('[API] Fetching from:', domain)
+
+    const res = await fetch(`https://${domain}/api/v2/tickets`, {
       headers: {
         'Authorization': `Basic ${auth}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; Vercel)',
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Cache-Control': 'no-cache',
       },
     })
 
-    if (!ticketsRes.ok) {
-      throw new Error(`Status ${ticketsRes.status}`)
-    }
-
-    const data = await ticketsRes.json()
+    console.log('[API] Status:', res.status)
+    
+    const data = await res.json()
     const tickets = data.tickets || []
+    
+    console.log('[API] Tickets returned:', tickets.length)
+
+    if (tickets.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: 'Got 0 tickets - key likely has IP block too',
+        status: res.status,
+      })
+    }
 
     // Group by client
     const clientMap: Record<string, any[]> = {}
@@ -40,16 +45,11 @@ export async function GET() {
       const open = tix.filter((t: any) => t.status === 2).length
       const critical = tix.filter((t: any) => t.priority >= 3).length
       const health = Math.max(0, 100 - open * 5 - critical * 15)
-      return {
-        id: name, name,
-        health,
-        risk: health >= 70 ? 'green' : health >= 40 ? 'yellow' : 'red',
-        open, critical, total: tix.length,
-      }
+      return { id: name, name, health, risk: health >= 70 ? 'green' : health >= 40 ? 'yellow' : 'red', open, critical, total: tix.length }
     }).sort((a, b) => a.health - b.health)
 
     return NextResponse.json({ success: true, accounts, totalTickets: tickets.length })
   } catch (error: any) {
-    return NextResponse.json({ success: false, accounts: [], error: error.message })
+    return NextResponse.json({ success: false, error: error.message })
   }
 }
