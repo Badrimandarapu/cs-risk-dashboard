@@ -4,7 +4,6 @@ const RISKS = [
   { id: 1, account: 'Acme Global', type: 'Escalation Risk', severity: 'critical', probability: 89, description: 'Payment processing failures blocking go-live' },
   { id: 2, account: 'Fashion Retail', type: 'Sentiment Decline', severity: 'high', probability: 76, description: 'Admin team sentiment dropped 40 points in 5 days' },
   { id: 3, account: 'TechVenture', type: 'Implementation Delay', severity: 'medium', probability: 42, description: 'Implementation velocity declining, adoption at 62%' },
-  { id: 4, account: 'Retail Dynamics', type: 'Renewal Risk', severity: 'high', probability: 65, description: 'Renewal in 45 days, health declining, unlikely to renew' },
 ]
 
 export default function RisksPage() {
@@ -14,7 +13,6 @@ export default function RisksPage() {
         <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold' }}>Identified Risks</h1>
         <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>Account risks and escalation triggers</p>
       </div>
-
       <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem' }}>
         <div style={{ display: 'grid', gap: '1rem' }}>
           {RISKS.map((risk) => (
@@ -23,28 +21,16 @@ export default function RisksPage() {
               border: '1px solid #334155',
               borderRadius: '8px',
               padding: '1.5rem',
-              borderLeft: `4px solid ${risk.severity === 'critical' ? '#ef4444' : risk.severity === 'high' ? '#f59e0b' : '#3b82f6'}`
+              borderLeft: `4px solid ${risk.severity === 'critical' ? '#ef4444' : '#f59e0b'}`
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div>
-                  <h3 style={{ fontWeight: '600', fontSize: '1rem' }}>{risk.type}</h3>
+                  <h3 style={{ fontWeight: '600' }}>{risk.type}</h3>
                   <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.5rem' }}>{risk.description}</p>
-                  <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.5rem' }}>Account: {risk.account}</p>
+                  <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.5rem' }}>{risk.account}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '1.875rem', fontWeight: 'bold', color: risk.severity === 'critical' ? '#ef4444' : risk.severity === 'high' ? '#f59e0b' : '#3b82f6' }}>
-                    {risk.probability}%
-                  </p>
-                  <span style={{
-                    padding: '0.25rem 0.75rem',
-                    borderRadius: '4px',
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    backgroundColor: risk.severity === 'critical' ? '#7f1d1d' : risk.severity === 'high' ? '#78350f' : '#0c4a6e',
-                    color: risk.severity === 'critical' ? '#fca5a5' : risk.severity === 'high' ? '#fcd34d' : '#7dd3fc'
-                  }}>
-                    {risk.severity}
-                  </span>
+                  <p style={{ fontSize: '1.875rem', fontWeight: 'bold', color: risk.severity === 'critical' ? '#ef4444' : '#f59e0b' }}>{risk.probability}%</p>
                 </div>
               </div>
             </div>
