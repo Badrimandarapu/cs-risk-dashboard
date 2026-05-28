@@ -13,17 +13,20 @@ const HEALTH_DATA = [
 export default function Dashboard() {
   const [accounts, setAccounts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await fetch('/api/freshdesk')
         const data = await res.json()
+        console.log('API Response:', data)
         if (data.success && data.accounts) {
           setAccounts(data.accounts)
         }
-      } catch (error) {
-        console.error('Error fetching data:', error)
+      } catch (err: any) {
+        console.error('Fetch error:', err)
+        setError(err.message)
       } finally {
         setLoading(false)
       }
@@ -42,7 +45,7 @@ export default function Dashboard() {
     <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#fff' }}>
       <div style={{ borderBottom: '1px solid #1e293b', padding: '2rem' }}>
         <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold' }}>CS Risk Intelligence Dashboard</h1>
-        <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>Live Freshdesk Data Integration</p>
+        <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>Real-time Freshdesk Integration • {accounts.length} Accounts</p>
       </div>
 
       <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem' }}>
@@ -84,32 +87,47 @@ export default function Dashboard() {
         {/* Risk Radar Table */}
         <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', overflow: 'hidden' }}>
           <div style={{ padding: '1.5rem', borderBottom: '1px solid #334155', backgroundColor: '#0f172a' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Risk Radar (From Freshdesk)</h3>
-            <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginTop: '0.25rem' }}>Real-time account health from support tickets</p>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Risk Radar</h3>
+            <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginTop: '0.25rem' }}>Real-time account health from Freshdesk</p>
           </div>
           {loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Loading Freshdesk data...</div>
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Loading...</div>
+          ) : error ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>Error: {error}</div>
           ) : accounts.length === 0 ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No accounts found</div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #334155', backgroundColor: '#0f172a' }}>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Account</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Health</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Open Tickets</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Critical</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Risk</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Account Name</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Health Score</th>
+                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600' }}>Open Tickets</th>
+                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600' }}>Critical</th>
+                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600' }}>Risk Level</th>
                 </tr>
               </thead>
               <tbody>
                 {accounts.map((account) => (
                   <tr key={account.id} style={{ borderBottom: '1px solid #334155' }}>
                     <td style={{ padding: '1rem', fontWeight: '500' }}>{account.name}</td>
-                    <td style={{ padding: '1rem', fontWeight: '500', color: '#3b82f6' }}>{account.health}</td>
-                    <td style={{ padding: '1rem' }}>{account.open}</td>
-                    <td style={{ padding: '1rem', color: '#ef4444' }}>{account.critical}</td>
                     <td style={{ padding: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: '60px', height: '6px', backgroundColor: '#334155', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div 
+                            style={{
+                              height: '100%',
+                              width: `${account.health}%`,
+                              backgroundColor: account.health >= 70 ? '#10b981' : account.health >= 40 ? '#f59e0b' : '#ef4444'
+                            }}
+                          />
+                        </div>
+                        <span style={{ fontWeight: '600', minWidth: '30px' }}>{account.health}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '1rem', textAlign: 'center', fontWeight: '500' }}>{account.open}</td>
+                    <td style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#ef4444' }}>{account.critical}</td>
+                    <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <span style={{
                         padding: '0.25rem 0.75rem',
                         borderRadius: '4px',
@@ -127,6 +145,7 @@ export default function Dashboard() {
             </table>
           )}
         </div>
+
       </div>
     </div>
   )
