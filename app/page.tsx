@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Sidebar from '@/components/Sidebar'
 import TicketIntelligence from '@/components/TicketIntelligence'
 import SentimentPanel from '@/components/SentimentPanel'
 import ActionCenter from '@/components/ActionCenter'
+import AIInsights from '@/components/AIInsights'
 
 interface Account {
   name: string
@@ -16,148 +18,146 @@ interface Account {
   criticalTickets: number
 }
 
+interface DashboardData {
+  accounts: Account[]
+  totalTickets: number
+  success: boolean
+}
+
 export default function Home() {
-  const [accounts, setAccounts] = useState<Account[]>([])
+  const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [totalTickets, setTotalTickets] = useState(0)
 
   useEffect(() => {
-    const loadData = async () => {
+    const fetchDashboard = async () => {
       try {
-        const response = await fetch('/api/dashboard')
-        const data = await response.json()
-        
-        if (data.success) {
-          setAccounts(data.accounts || [])
-          setTotalTickets(data.totalTickets || 0)
-        }
+        const res = await fetch('/api/dashboard', { cache: 'no-store' })
+        const json = await res.json()
+        setData(json)
       } catch (error) {
-        console.error('Error loading data:', error)
+        console.error('Failed to fetch dashboard:', error)
+        setData({ accounts: [], totalTickets: 0, success: false })
       } finally {
         setLoading(false)
       }
     }
 
-    loadData()
+    fetchDashboard()
   }, [])
 
-  const healthyCount = accounts.filter((a) => a.riskLevel === 'green').length
-  const atRiskCount = accounts.filter((a) => a.riskLevel === 'red').length
-  const avgScore = accounts.length > 0
-    ? Math.round(accounts.reduce((sum, a) => sum + a.healthScore, 0) / accounts.length)
-    : 0
+  const accounts = data?.accounts || []
+  const totalTickets = data?.totalTickets || 0
+
+  const avgHealth = accounts.length > 0 ? Math.round(accounts.reduce((sum, a) => sum + a.healthScore, 0) / accounts.length) : 0
+  const redAccounts = accounts.filter(a => a.riskLevel === 'red').length
+  const criticalTickets = accounts.reduce((sum, a) => sum + a.criticalTickets, 0)
+  const avgEscalation = accounts.length > 0 ? Math.round(accounts.reduce((sum, a) => sum + a.escalationPercentage, 0) / accounts.length) : 0
 
   const getRiskColor = (level: string) => {
-    switch (level) {
-      case 'red': return { bg: '#fee2e2', text: '#991b1b', border: '#dc2626' }
-      case 'yellow': return { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' }
-      case 'green': return { bg: '#dcfce7', text: '#15803d', border: '#22c55e' }
-      default: return { bg: '#f3f4f6', text: '#374151', border: '#9ca3af' }
-    }
+    if (level === 'red') return 'text-red-600'
+    if (level === 'yellow') return 'text-yellow-600'
+    return 'text-green-600'
+  }
+
+  const getRiskBg = (level: string) => {
+    if (level === 'red') return 'bg-red-50'
+    if (level === 'yellow') return 'bg-yellow-50'
+    return 'bg-green-50'
   }
 
   return (
-    <div style={{ padding: '32px' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '36px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>📊 CS Risk Intelligence Dashboard</h1>
-        <p style={{ fontSize: '16px', color: '#6b7280' }}>Real-time data from Google Sheets + Freshdesk</p>
-      </div>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
 
-      {loading ? (
-        <p style={{ color: '#6b7280', textAlign: 'center', padding: '40px', fontSize: '16px' }}>
-          📥 Loading accounts from Google Sheets and Freshdesk tickets...
-        </p>
-      ) : (
-        <>
-          {/* Metrics Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
-            {[
-              { label: 'Total Accounts', value: accounts.length, color: '#3b82f6' },
-              { label: 'Healthy Accounts', value: healthyCount, color: '#22c55e' },
-              { label: 'At-Risk Accounts', value: atRiskCount, color: '#ef4444' },
-              { label: 'Avg Health Score', value: avgScore + '%', color: '#a855f7' },
-            ].map((card, idx) => (
-              <div
-                key={idx}
-                style={{
-                  backgroundColor: 'white',
-                  padding: '24px',
-                  borderRadius: '8px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  borderLeft: `4px solid ${card.color}`,
-                }}
-              >
-                <p style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500', marginBottom: '8px' }}>{card.label}</p>
-                <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827' }}>{card.value}</p>
-              </div>
-            ))}
-          </div>
+      <main className="flex-1 overflow-auto">
+        <div className="border-b bg-white p-6">
+          <h1 className="text-3xl font-bold text-gray-900">CS Risk Intelligence</h1>
+          <p className="text-gray-600 mt-1">Real-time customer success metrics powered by Freshdesk + Google Sheets</p>
+        </div>
 
-          {/* Risk Radar Table */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' }}>🎯 Risk Radar (Google Sheets + Freshdesk)</h2>
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg border p-6">
+              <div className="text-sm font-medium text-gray-600">Avg Health Score</div>
+              <div className="text-4xl font-bold mt-2 text-blue-600">{avgHealth}</div>
+              <div className="text-xs text-gray-500 mt-2">{accounts.length} accounts tracked</div>
+            </div>
 
-            {accounts.length > 0 ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', color: '#111827' }}>Account</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', color: '#111827' }}>Risk Level</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', color: '#111827' }}>Health Score</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', color: '#111827' }}>Escalation %</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', color: '#111827' }}>FD Tickets</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', color: '#111827' }}>Critical</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accounts.map((account) => {
-                    const colors = getRiskColor(account.riskLevel)
-                    return (
-                      <tr key={account.name} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#fafafa' }}>
-                        <td style={{ padding: '12px', color: '#111827', fontWeight: '500' }}>{account.name}</td>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{ padding: '6px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', backgroundColor: colors.bg, color: colors.text }}>
-                            {account.riskLevel.toUpperCase()}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px', color: '#111827', fontWeight: '600' }}>{account.healthScore}%</td>
-                        <td style={{ padding: '12px', color: '#dc2626', fontWeight: '600' }}>{account.escalationPercentage}%</td>
-                        <td style={{ padding: '12px', color: '#111827' }}>{account.ticketCount}</td>
-                        <td style={{ padding: '12px', color: account.criticalTickets > 0 ? '#ef4444' : '#22c55e', fontWeight: '600' }}>
-                          {account.criticalTickets}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px' }}>No accounts found</p>
-            )}
-          </div>
+            <div className="bg-white rounded-lg border p-6">
+              <div className="text-sm font-medium text-gray-600">At-Risk Accounts</div>
+              <div className="text-4xl font-bold mt-2 text-red-600">{redAccounts}</div>
+              <div className="text-xs text-gray-500 mt-2">High priority</div>
+            </div>
 
-          {/* Freshdesk Stats */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' }}>🎟️ Freshdesk Integration</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-              <div style={{ padding: '16px', backgroundColor: '#f0f9ff', borderRadius: '6px', borderLeft: '4px solid #3b82f6' }}>
-                <p style={{ fontSize: '12px', color: '#1e40af', fontWeight: '600' }}>Total Freshdesk Tickets</p>
-                <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>{totalTickets}</p>
-              </div>
-              <div style={{ padding: '16px', backgroundColor: '#f0fdf4', borderRadius: '6px', borderLeft: '4px solid #22c55e' }}>
-                <p style={{ fontSize: '12px', color: '#15803d', fontWeight: '600' }}>Connected & Synced</p>
-                <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#15803d' }}>✅</p>
-              </div>
+            <div className="bg-white rounded-lg border p-6">
+              <div className="text-sm font-medium text-gray-600">Critical Tickets</div>
+              <div className="text-4xl font-bold mt-2 text-orange-600">{criticalTickets}</div>
+              <div className="text-xs text-gray-500 mt-2">Priority 4</div>
+            </div>
+
+            <div className="bg-white rounded-lg border p-6">
+              <div className="text-sm font-medium text-gray-600">Avg Escalation Risk</div>
+              <div className="text-4xl font-bold mt-2 text-purple-600">{avgEscalation}%</div>
+              <div className="text-xs text-gray-500 mt-2">Probability</div>
             </div>
           </div>
 
-          {/* Other Components */}
-          <TicketIntelligence />
-          <SentimentPanel />
-          <ActionCenter />
-        </>
-      )}
+          <div className="bg-white rounded-lg border">
+            <div className="p-6 border-b">
+              <h2 className="text-lg font-semibold text-gray-900">Risk Radar</h2>
+              <p className="text-sm text-gray-600 mt-1">Account health and escalation tracking</p>
+            </div>
+
+            {loading ? (
+              <div className="p-12 text-center text-gray-500">Loading accounts...</div>
+            ) : accounts.length === 0 ? (
+              <div className="p-12 text-center text-gray-500">No accounts found</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Account</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Company</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Health</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Risk Level</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Tickets</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Escalation %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {accounts.map((account, i) => (
+                      <tr key={i} className={`border-b ${getRiskBg(account.riskLevel)}`}>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{account.name}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{account.company}</td>
+                        <td className="px-6 py-4 text-sm font-semibold">{account.healthScore}</td>
+                        <td className={`px-6 py-4 text-sm font-semibold ${getRiskColor(account.riskLevel)}`}>
+                          {account.riskLevel.toUpperCase()}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <span className="bg-gray-100 px-3 py-1 rounded-full text-xs font-medium">
+                            {account.ticketCount} open
+                            {account.criticalTickets > 0 && ` • ${account.criticalTickets} critical`}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-semibold text-purple-600">{account.escalationPercentage}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <TicketIntelligence accounts={accounts} />
+            <SentimentPanel />
+            <ActionCenter />
+          </div>
+
+          <AIInsights />
+        </div>
+      </main>
     </div>
   )
 }
