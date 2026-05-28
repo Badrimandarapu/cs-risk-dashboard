@@ -10,13 +10,18 @@ export async function GET() {
     // Fetch real tickets from Freshdesk
     const allTickets = await getTicketsFromFreshdesk()
 
-    // Map tickets to accounts and calculate metrics
+    // Map tickets to accounts using cf_client custom field
     const accountsWithMetrics = accounts.map((account) => {
-      // Simple match: tickets with account name in subject/description
+      // Match tickets to account using cf_client field
       const accountTickets = allTickets.filter((ticket: any) => {
-        const text = (ticket.subject + ' ' + (ticket.description || '')).toLowerCase()
-        return text.includes(account.name.toLowerCase()) || 
-               text.includes(account.company.toLowerCase())
+        const clientName = ticket.custom_fields?.cf_client || ''
+        const clientShort = ticket.custom_fields?.cf_client450902 || ''
+        
+        return (
+          clientName.toLowerCase().includes(account.company.toLowerCase()) ||
+          clientShort.toLowerCase().includes(account.company.toLowerCase()) ||
+          account.company.toLowerCase().includes(clientName.toLowerCase())
+        )
       })
 
       // Calculate updated health score based on tickets
