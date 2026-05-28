@@ -2,77 +2,66 @@ export interface FreshDeskTicket {
   id: number
   subject: string
   description: string
-  status: number // 2=open, 3=pending, 4=resolved, 5=closed
-  priority: number // 1=low, 2=medium, 3=high, 4=urgent
+  status: number
+  priority: number
   created_at: string
   updated_at: string
-  customer_id: number
-  requester_id: number
-  type: string
+  custom_fields?: {
+    cf_account_name?: string
+    cf_customer_email?: string
+  }
 }
 
-export interface FreshDeskContact {
-  id: number
-  name: string
-  email: string
-  phone: string
-}
+export async function getTicketsFromFreshdesk(): Promise<FreshDeskTicket[]> {
+  const API_KEY = process.env.FRESHDESK_API_KEY
+  const DOMAIN = process.env.FRESHDESK_DOMAIN
 
-const API_KEY = process.env.FRESHDESK_API_KEY
-const DOMAIN = process.env.FRESHDESK_DOMAIN
-
-async function freshDeskAPI(endpoint: string) {
   if (!API_KEY || !DOMAIN) {
-    console.warn('Freshdesk credentials missing')
-    return null
+    console.error('Freshdesk credentials missing')
+    return []
   }
 
   try {
-    const response = await fetch(`https://${DOMAIN}.freshdesk.com/api/v2${endpoint}`, {
+    const auth = Buffer.from(`${API_KEY}:X`).toString('base64')
+
+    const response = await fetch(`https://${DOMAIN}.freshdesk.com/api/v2/tickets`, {
       method: 'GET',
       headers: {
-        Authorization: `Basic ${Buffer.from(`${API_KEY}:X`).toString('base64')}`,
+        Authorization: `Basic ${auth}`,
         'Content-Type': 'application/json',
       },
     })
 
     if (!response.ok) {
       console.error(`Freshdesk API error: ${response.status}`)
-      return null
+      return []
     }
 
-    return await response.json()
+    const data = await response.json()
+    return data.tickets || []
   } catch (error) {
     console.error('Freshdesk fetch error:', error)
-    return null
+    return []
   }
 }
 
-export async function getTickets() {
-  const data = await freshDeskAPI('/tickets?page=1&per_page=100')
-  if (!data) return []
-  return data.tickets || []
-}
+export function calculateMetricsFromTickets(tickets: FreshDeskTicket[]) {
+  if (tickets.length === 0) {
+    return {
+      totalTickets: 0,
+      criticalTickets: 0,
+      openTickets: 0,
+      avgResolutionTime: '0 days',
+    }
+  }
 
-export async function getContacts() {
-  const data = await freshDeskAPI('/contacts?page=1&per_page=100')
-  if (!data) return []
-  return data.contacts || []
-}
-
-export async function getTicketStats() {
-  const tickets = await getTickets()
-  if (!tickets || tickets.length === 0) return null
-
-  const critical = tickets.filter((t: FreshDeskTicket) => t.priority === 4).length
-  const open = tickets.filter((t: FreshDeskTicket) => t.status === 2).length
-  const pending = tickets.filter((t: FreshDeskTicket) => t.status === 3).length
+  const critical = tickets.filter((t) => t.priority === 4).length
+  const open = tickets.filter((t) => t.status === 2).length
 
   return {
     totalTickets: tickets.length,
     criticalTickets: critical,
     openTickets: open,
-    pendingTickets: pending,
     avgResolutionTime: '2.5 days',
   }
 }
