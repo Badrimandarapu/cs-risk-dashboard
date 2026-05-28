@@ -1,88 +1,55 @@
 import { NextResponse } from 'next/server'
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const apiKey = 'U6ZNaOkxNplnfPesmJ0I'
     const domain = 'increff.freshdesk.com'
-    const auth = `Basic ${Buffer.from(`${apiKey}:X`).toString('base64')}`
+    const auth = Buffer.from(`${apiKey}:X`).toString('base64')
 
-    console.log('[FRESHDESK] Starting fetch...')
-    console.log('[FRESHDESK] Auth:', auth.substring(0, 20) + '...')
-    console.log('[FRESHDESK] URL: https://' + domain + '/api/v2/tickets')
-
+    // Match EXACT Postman headers
     const ticketsRes = await fetch(`https://${domain}/api/v2/tickets`, {
       method: 'GET',
       headers: {
-        'Authorization': auth,
+        'Authorization': `Basic ${auth}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible; Vercel)',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
       },
     })
 
-    console.log('[FRESHDESK] Response status:', ticketsRes.status)
-    console.log('[FRESHDESK] Response ok:', ticketsRes.ok)
-
-    const text = await ticketsRes.text()
-    console.log('[FRESHDESK] Response length:', text.length)
-    console.log('[FRESHDESK] Response preview:', text.substring(0, 200))
-
     if (!ticketsRes.ok) {
-      return NextResponse.json({
-        success: false,
-        accounts: [],
-        error: `HTTP ${ticketsRes.status}`,
-        responsePreview: text.substring(0, 500),
-      })
+      throw new Error(`Status ${ticketsRes.status}`)
     }
 
-    const ticketsData = JSON.parse(text)
-    const tickets = ticketsData.tickets || []
-
-    console.log('[FRESHDESK] Tickets found:', tickets.length)
+    const data = await ticketsRes.json()
+    const tickets = data.tickets || []
 
     // Group by client
     const clientMap: Record<string, any[]> = {}
-    tickets.forEach((ticket: any) => {
-      const clientName = ticket.custom_fields?.cf_client || 'Unknown'
-      if (clientName !== 'Unknown') {
-        if (!clientMap[clientName]) clientMap[clientName] = []
-        clientMap[clientName].push(ticket)
+    tickets.forEach((t: any) => {
+      const name = t.custom_fields?.cf_client || 'Unknown'
+      if (name !== 'Unknown') {
+        if (!clientMap[name]) clientMap[name] = []
+        clientMap[name].push(t)
       }
     })
-
-    console.log('[FRESHDESK] Unique clients:', Object.keys(clientMap).length)
 
     const accounts = Object.entries(clientMap).map(([name, tix]) => {
       const open = tix.filter((t: any) => t.status === 2).length
-      const critical = tix.filter((t: any) => t.priority >= 3 && t.status === 2).length
+      const critical = tix.filter((t: any) => t.priority >= 3).length
       const health = Math.max(0, 100 - open * 5 - critical * 15)
-
       return {
-        id: name,
-        name,
+        id: name, name,
         health,
         risk: health >= 70 ? 'green' : health >= 40 ? 'yellow' : 'red',
-        open,
-        critical,
-        total: tix.length,
+        open, critical, total: tix.length,
       }
-    })
+    }).sort((a, b) => a.health - b.health)
 
-    return NextResponse.json({
-      success: true,
-      accounts,
-      totalTickets: tickets.length,
-      debug: {
-        clientsFound: Object.keys(clientMap).length,
-        accountsGenerated: accounts.length,
-      }
-    })
+    return NextResponse.json({ success: true, accounts, totalTickets: tickets.length })
   } catch (error: any) {
-    console.error('[FRESHDESK] ERROR:', error)
-    return NextResponse.json({
-      success: false,
-      accounts: [],
-      error: error.message,
-      stack: error.stack,
-    })
+    return NextResponse.json({ success: false, accounts: [], error: error.message })
   }
 }
