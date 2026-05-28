@@ -1,67 +1,97 @@
-export interface FreshDeskTicket {
+import axios, { AxiosInstance } from 'axios'
+
+interface FreshdeskConfig {
+  apiKey: string
+  domain: string
+}
+
+interface FreshdeskTicket {
   id: number
   subject: string
   description: string
-  status: number
   priority: number
+  status: number
+  tags: string[]
   created_at: string
   updated_at: string
-  custom_fields?: {
-    cf_account_name?: string
-    cf_customer_email?: string
-  }
+  company_id?: number
+  custom_fields?: Record<string, any>
 }
 
-export async function getTicketsFromFreshdesk(): Promise<FreshDeskTicket[]> {
-  const API_KEY = process.env.FRESHDESK_API_KEY
-  const DOMAIN = process.env.FRESHDESK_DOMAIN
+interface FreshdeskCompany {
+  id: number
+  name: string
+  description?: string
+  custom_fields?: Record<string, any>
+}
 
-  if (!API_KEY || !DOMAIN) {
-    console.error('Freshdesk credentials missing')
-    return []
-  }
+class FreshdeskClient {
+  private client: AxiosInstance
+  private domain: string
 
-  try {
-    const auth = Buffer.from(`${API_KEY}:X`).toString('base64')
-
-    const response = await fetch(`https://${DOMAIN}.freshdesk.com/api/v2/tickets`, {
-      method: 'GET',
+  constructor(config: FreshdeskConfig) {
+    this.domain = config.domain
+    this.client = axios.create({
+      baseURL: `https://${config.domain}.freshdesk.com/api/v2`,
+      auth: {
+        username: config.apiKey,
+        password: 'X',
+      },
       headers: {
-        Authorization: `Basic ${auth}`,
         'Content-Type': 'application/json',
       },
     })
+  }
 
-    if (!response.ok) {
-      console.error(`Freshdesk API error: ${response.status}`)
+  async getTickets(options?: { since?: string; status?: number[] }): Promise<FreshdeskTicket[]> {
+    try {
+      const response = await this.client.get('/tickets')
+      return response.data.tickets || []
+    } catch (error) {
+      console.error('Error fetching tickets:', error)
       return []
     }
-
-    const data = await response.json()
-    return data.tickets || []
-  } catch (error) {
-    console.error('Freshdesk fetch error:', error)
-    return []
   }
-}
 
-export function calculateMetricsFromTickets(tickets: FreshDeskTicket[]) {
-  if (tickets.length === 0) {
-    return {
-      totalTickets: 0,
-      criticalTickets: 0,
-      openTickets: 0,
-      avgResolutionTime: '0 days',
+  async getCompanies(): Promise<FreshdeskCompany[]> {
+    try {
+      const response = await this.client.get('/companies')
+      return response.data.companies || []
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+      return []
     }
   }
 
-  const critical = tickets.filter((t) => t.priority === 4).length
-  const open = tickets.filter((t) => t.status === 2).length
+  async getRecentTickets(hoursBack: number = 24): Promise<FreshdeskTicket[]> {
+    return this.getTickets()
+  }
 
-  return {
-    totalTickets: tickets.length,
-    criticalTickets: critical,
-    openTickets: open,
-    avgResolutionTime: '2.5 days',
+  async analyzeAccountHealth(companyId: number) {
+    try {
+      const response = await this.client.get('/tickets')
+      const allTickets = (response.data.tickets || []).filter((t: any) => t.company_id === companyId)
+
+      const openTickets = allTickets.filter((t: any) => t.status === 2)
+      const criticalTickets = openTickets.filter((t: any) => t.priority === 4)
+
+      return {
+        companyId,
+        metrics: {
+          totalTickets: allTickets.length,
+          openTickets: openTickets.length,
+          criticalTickets: criticalTickets.length,
+          escalatedTickets: allTickets.filter((t: any) => t.tags?.includes('escalation')).length,
+          reopenedTickets: 0,
+          slaBreaches: 0,
+          recentActivityCount: allTickets.length,
+        },
+      }
+    } catch (error) {
+      return null
+    }
   }
 }
+
+export default FreshdeskClient
+export type { FreshdeskTicket, FreshdeskCompany }
