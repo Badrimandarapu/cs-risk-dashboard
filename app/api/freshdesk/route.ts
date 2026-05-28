@@ -7,6 +7,7 @@ export async function GET() {
 
     const auth = Buffer.from(`${apiKey}:X`).toString('base64')
 
+    // Fetch companies
     const companiesRes = await fetch(
       `https://${domain}.freshdesk.com/api/v2/companies`,
       {
@@ -20,6 +21,10 @@ export async function GET() {
     const companiesData = await companiesRes.json()
     const companies = companiesData.companies || []
 
+    console.log('Companies response:', companiesData)
+    console.log('Companies count:', companies.length)
+
+    // Fetch tickets
     const ticketsRes = await fetch(
       `https://${domain}.freshdesk.com/api/v2/tickets`,
       {
@@ -32,6 +37,9 @@ export async function GET() {
 
     const ticketsData = await ticketsRes.json()
     const allTickets = ticketsData.tickets || []
+
+    console.log('Tickets response keys:', Object.keys(ticketsData))
+    console.log('Tickets count:', allTickets.length)
 
     const accounts = companies.slice(0, 10).map((company: any) => {
       const tickets = allTickets.filter((t: any) => t.company_id === company.id)
@@ -54,6 +62,12 @@ export async function GET() {
       success: true,
       accounts,
       totalTickets: allTickets.length,
+      debug: {
+        companiesCount: companies.length,
+        ticketsCount: allTickets.length,
+        companiesSample: companies.slice(0, 2),
+        ticketsSample: allTickets.slice(0, 2),
+      }
     })
   } catch (error: any) {
     return NextResponse.json({
