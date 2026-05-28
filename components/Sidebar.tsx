@@ -1,7 +1,16 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3 } from 'lucide-react'
+import { BarChart3, Users, AlertTriangle, Zap, TrendingUp, FileText } from 'lucide-react'
+
+const navigation = [
+  { name: 'Overview', href: '/', icon: '📊' },
+  { name: 'Accounts', href: '/accounts', icon: '👥' },
+  { name: 'Risks', href: '/risks', icon: '⚠️' },
+  { name: 'Escalations', href: '/escalations', icon: '⚡' },
+  { name: 'Insights', href: '/insights', icon: '🤖' },
+  { name: 'Reports', href: '/reports', icon: '📄' },
+]
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -21,23 +30,26 @@ export default function Sidebar() {
       </div>
 
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-        <Link href="/" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          padding: '0.75rem 1rem',
-          borderRadius: '8px',
-          backgroundColor: pathname === '/' ? 'rgba(37, 99, 235, 0.2)' : 'transparent',
-          color: pathname === '/' ? '#60a5fa' : '#94a3b8',
-          border: pathname === '/' ? '1px solid rgba(59, 130, 246, 0.3)' : 'none',
-          textDecoration: 'none',
-          fontSize: '0.875rem',
-          fontWeight: '500',
-          cursor: 'pointer',
-          transition: 'all 0.2s'
-        }}>
-          📊 Overview
-        </Link>
+        {navigation.map((item) => (
+          <Link key={item.href} href={item.href} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            backgroundColor: pathname === item.href ? 'rgba(37, 99, 235, 0.2)' : 'transparent',
+            color: pathname === item.href ? '#60a5fa' : '#94a3b8',
+            border: pathname === item.href ? '1px solid rgba(59, 130, 246, 0.3)' : 'none',
+            textDecoration: 'none',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}>
+            <span style={{ fontSize: '1.25rem' }}>{item.icon}</span>
+            {item.name}
+          </Link>
+        ))}
       </nav>
 
       <div style={{ borderTop: '1px solid #334155', paddingTop: '1.5rem' }}>
