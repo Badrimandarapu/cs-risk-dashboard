@@ -5,80 +5,66 @@ export async function GET() {
     const apiKey = 'U6ZNaOkxNplnfPesmJ0I'
     const domain = 'support.increff'
 
-    const auth = Buffer.from(`${apiKey}:X`).toString('base64')
+    console.log('Freshdesk API called')
+    console.log('API Key:', apiKey ? 'Present' : 'Missing')
+    console.log('Domain:', domain)
 
-    // Fetch companies
+    const auth = Buffer.from(`${apiKey}:X`).toString('base64')
+    console.log('Auth header created')
+
+    // Test companies endpoint
+    console.log('Fetching companies...')
     const companiesRes = await fetch(
       `https://${domain}.freshdesk.com/api/v2/companies`,
       {
         headers: {
           Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/json',
         },
       }
-    )
+    ).catch(err => {
+      console.error('Companies fetch error:', err)
+      throw err
+    })
+
+    console.log('Companies response status:', companiesRes.status)
+    console.log('Companies response headers:', Object.fromEntries(companiesRes.headers))
+
+    const companiesText = await companiesRes.text()
+    console.log('Companies response body:', companiesText.substring(0, 200))
 
     if (!companiesRes.ok) {
       return NextResponse.json({
         success: false,
         accounts: [],
         error: `Companies fetch failed: ${companiesRes.status}`,
+        details: companiesText.substring(0, 500),
       })
     }
 
-    const companiesData = await companiesRes.json()
+    const companiesData = JSON.parse(companiesText)
     const companies = companiesData.companies || []
 
-    // Fetch tickets
-    const ticketsRes = await fetch(
-      `https://${domain}.freshdesk.com/api/v2/tickets`,
-      {
-        headers: {
-          Authorization: `Basic ${auth}`,
-        },
-      }
-    )
-
-    if (!ticketsRes.ok) {
-      return NextResponse.json({
-        success: false,
-        accounts: [],
-        error: `Tickets fetch failed: ${ticketsRes.status}`,
-      })
-    }
-
-    const ticketsData = await ticketsRes.json()
-    const allTickets = ticketsData.tickets || []
-
-    // Analyze each account
-    const accounts = companies.slice(0, 10).map((company: any) => {
-      const tickets = allTickets.filter((t: any) => t.company_id === company.id)
-      const openTickets = tickets.filter((t: any) => t.status === 2)
-      const criticalTickets = openTickets.filter((t: any) => t.priority === 4)
-
-      const healthScore = Math.max(0, 100 - openTickets.length * 5 - criticalTickets.length * 15)
-      const riskLevel = healthScore >= 70 ? 'green' : healthScore >= 40 ? 'yellow' : 'red'
-
-      return {
-        id: company.id,
-        name: company.name,
-        health: healthScore,
-        risk: riskLevel,
-        open: openTickets.length,
-        critical: criticalTickets.length,
-        total: tickets.length,
-      }
-    })
+    console.log('Found companies:', companies.length)
 
     return NextResponse.json({
       success: true,
-      accounts,
-      totalTickets: allTickets.length,
+      accounts: companies.slice(0, 5).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+      })),
+      debug: {
+        companiesCount: companies.length,
+        apiKeyLength: apiKey.length,
+      },
     })
   } catch (error: any) {
+    console.error('Freshdesk API error:', error)
     return NextResponse.json({
       success: false,
       accounts: [],
       error: error.message || 'Unknown error',
+      stack: error.stack,
     })
   }
 }
