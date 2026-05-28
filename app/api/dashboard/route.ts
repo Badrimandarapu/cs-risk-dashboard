@@ -4,15 +4,24 @@ import { getTicketsFromFreshdesk } from '@/lib/freshdesk'
 
 export async function GET() {
   try {
-    // Fetch real accounts from Google Sheets
-    const accounts = await getAccountsFromSheet()
+    console.log('📊 Starting dashboard fetch...')
     
-    // Fetch real tickets from Freshdesk
-    const allTickets = await getTicketsFromFreshdesk()
+    const accounts = await getAccountsFromSheet()
+    console.log(`✅ Got ${accounts.length} accounts`)
 
-    // Map tickets to accounts using cf_client custom field
+    const allTickets = await getTicketsFromFreshdesk()
+    console.log(`✅ Got ${allTickets.length} tickets`)
+
+    if (!accounts || accounts.length === 0) {
+      return NextResponse.json({
+        error: 'No accounts from Google Sheets',
+        accounts: [],
+        totalTickets: allTickets.length,
+        success: false,
+      })
+    }
+
     const accountsWithMetrics = accounts.map((account) => {
-      // Match tickets to account using cf_client field
       const accountTickets = allTickets.filter((ticket: any) => {
         const clientName = ticket.custom_fields?.cf_client || ''
         const clientShort = ticket.custom_fields?.cf_client450902 || ''
@@ -24,7 +33,6 @@ export async function GET() {
         )
       })
 
-      // Calculate updated health score based on tickets
       let healthScore = account.healthScore
       const criticalTickets = accountTickets.filter((t: any) => t.priority === 4).length
       const openTickets = accountTickets.filter((t: any) => t.status === 2).length
@@ -33,13 +41,11 @@ export async function GET() {
       healthScore -= openTickets * 2
       healthScore = Math.max(0, Math.min(100, healthScore))
 
-      // Determine risk level
       let riskLevel: 'green' | 'yellow' | 'red' = 'green'
       if (healthScore >= 70) riskLevel = 'green'
       else if (healthScore >= 40) riskLevel = 'yellow'
       else riskLevel = 'red'
 
-      // Calculate escalation percentage
       let escalationPercentage = Math.round(account.escalationProbability * 100)
       if (criticalTickets > 0) {
         escalationPercentage = Math.min(100, escalationPercentage + criticalTickets * 15)
@@ -63,12 +69,13 @@ export async function GET() {
       success: true,
     })
   } catch (error: any) {
-    console.error('Dashboard error:', error)
+    console.error('❌ Dashboard error:', error)
     return NextResponse.json({
       accounts: [],
       totalTickets: 0,
       error: error.message,
+      stack: error.stack,
       success: false,
-    })
+    }, { status: 500 })
   }
 }
