@@ -1,0 +1,198 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  freshdeskCompanyId    BigInt?   @unique
+  name                  String
+  displayName           String?
+  createdAt             DateTime  @default(now())
+  lastActivity          DateTime?
+  isActive              Boolean   @default(true)
+  metadata              Json      @default("{}") @db.JsonB
+  
+  tickets               SupportTicket[]
+  stakeholders          Stakeholder[]
+  signals               OperationalSignal[]
+  healthScores          AccountHealthScore[]
+  insights              AIInsight[]
+
+  @@index([name])
+  @@map("accounts")
+}
+
+model SupportTicket {
+  id                    BigInt    @id
+  accountId             String
+  subject               String
+  description           String?
+  priority              Int
+  status                Int
+  createdAt             DateTime
+  updatedAt             DateTime
+  resolvedAt            DateTime?
+  dueBy                 DateTime?
+  firstResponseDue      DateTime?
+  requesterId           BigInt?
+  agentId               BigInt?
+  groupId               BigInt?
+  reopenedCount         Int       @default(0)
+  conversationCount     Int       @default(0)
+  isEscalated           Boolean   @default(false)
+  tags                  String[]  @default([])
+  customFields          Json      @default("{}") @db.JsonB
+  metadata              Json      @default("{}") @db.JsonB
+  
+  account               Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  conversations         SupportConversation[]
+  signals               OperationalSignal[]
+
+  @@index([accountId])
+  @@index([status])
+  @@index([priority])
+  @@map("support_tickets")
+}
+
+model SupportConversation {
+  id                    BigInt    @id
+  ticketId              BigInt
+  body                  String    @db.Text
+  senderId              BigInt?
+  senderType            String
+  createdAt             DateTime
+  sentimentScore        Float?
+  hasFrustrationSignals Boolean   @default(false)
+  metadata              Json      @default("{}") @db.JsonB
+  
+  ticket                SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("support_conversations")
+}
+
+model Stakeholder {
+  id                    BigInt    @id
+  freshdeskId           BigInt    @unique
+  accountId             String
+  email                 String    @unique
+  name                  String?
+  title                 String?
+  isExecutive           Boolean   @default(false)
+  isActive              Boolean   @default(true)
+  firstSeen             DateTime  @default(now())
+  lastInvolved          DateTime?
+  involvementCount      Int       @default(0)
+  frustrationLevel      Float?
+  metadata              Json      @default("{}") @db.JsonB
+  
+  account               Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([isExecutive])
+  @@map("stakeholders")
+}
+
+model OperationalSignal {
+  id                    BigInt    @id @default(autoincrement())
+  accountId             String
+  ticketId              BigInt?
+  signalType            String
+  severity              String
+  confidence            Float
+  value                 Json      @db.JsonB
+  evidence              String    @db.Text
+  triggeredAt           DateTime
+  isActive              Boolean   @default(true)
+  resolvedAt            DateTime?
+  metadata              Json      @default("{}") @db.JsonB
+  createdAt             DateTime  @default(now())
+  
+  account               Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([signalType])
+  @@index([severity])
+  @@map("operational_signals")
+}
+
+model AccountHealthScore {
+  id                    BigInt    @id @default(autoincrement())
+  accountId             String
+  healthScore           Float
+  riskLevel             String
+  escalationRisk        Float
+  churnRisk             Float
+  supportStress         Float
+  openTickets           Int       @default(0)
+  criticalTickets       Int       @default(0)
+  slaBreaches           Int       @default(0)
+  dominantSignals       String[]  @default([])
+  measuredAt            DateTime
+  metadata              Json      @default("{}") @db.JsonB
+  createdAt             DateTime  @default(now())
+  
+  account               Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, measuredAt])
+  @@index([accountId])
+  @@map("account_health_scores")
+}
+
+model AIInsight {
+  id                    BigInt    @id @default(autoincrement())
+  accountId             String
+  insightType           String
+  title                 String
+  description           String    @db.Text
+  confidence            Float
+  impactSeverity        String
+  recommendedAction     String?   @db.Text
+  reasoning             String    @db.Text
+  sourceSignals         String[]  @default([])
+  isActedUpon           Boolean   @default(false)
+  validUntil            DateTime?
+  metadata              Json      @default("{}") @db.JsonB
+  createdAt             DateTime  @default(now())
+  
+  account               Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("ai_insights")
+}
+
+model SyncLog {
+  id                    BigInt    @id @default(autoincrement())
+  entityType            String
+  status                String
+  recordsFetched        Int
+  recordsProcessed      Int
+  recordsFailed         Int
+  startedAt             DateTime
+  completedAt           DateTime
+  durationSeconds       Int
+  errorMessage          String?
+  metadata              Json      @default("{}") @db.JsonB
+  createdAt             DateTime  @default(now())
+
+  @@index([entityType])
+  @@map("sync_logs")
+}
+
+model SystemEvent {
+  id                    BigInt    @id @default(autoincrement())
+  eventType             String
+  severity              String
+  message               String
+  relatedTo             String?
+  metadata              Json      @default("{}") @db.JsonB
+  createdAt             DateTime  @default(now())
+
+  @@index([eventType])
+  @@map("system_events")
+}
