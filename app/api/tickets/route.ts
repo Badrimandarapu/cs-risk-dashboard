@@ -13,6 +13,7 @@ interface TicketRow {
   isEscalated: boolean
 }
 
+// Updated tickets API - Force redeploy version 2
 export async function GET() {
   try {
     const tickets = await prisma.supportTicket.findMany({
