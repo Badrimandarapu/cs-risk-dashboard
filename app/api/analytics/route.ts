@@ -13,12 +13,11 @@ export async function GET() {
       },
     })
 
-    // Status mapping: 2=Open, 3=Pending, 4=Resolved, 5=Closed
-    // Combine 4 (Resolved) + 5 (Closed) as "Resolved"
+    // Status mapping: 2=Open, 3=Pending, 4=Resolved, 5=Closed (combine 4+5)
     const statusCount: Record<string, number> = {
       'Open': 0,
       'Pending': 0,
-      'Resolved': 0, // This includes both resolved (4) and closed (5)
+      'Resolved': 0,
     }
 
     const priorityCount: Record<string, number> = {
@@ -31,30 +30,27 @@ export async function GET() {
     const clientCount: Record<string, number> = {}
     const categoryCount: Record<string, number> = {}
 
-    for (const ticket of tickets) {
-      // Status: combine Resolved(4) and Closed(5) as "Resolved"
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const ticket of tickets as any[]) {
       if (ticket.status === 2) statusCount['Open']++
       else if (ticket.status === 3) statusCount['Pending']++
-      else if (ticket.status === 4 || ticket.status === 5) statusCount['Resolved']++ // Both 4 and 5 are Resolved
+      else if (ticket.status === 4 || ticket.status === 5) statusCount['Resolved']++
 
-      // Priority
       const priorityMap: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Urgent' }
       const priority = priorityMap[ticket.priority]
       if (priority) priorityCount[priority]++
 
-      // Client
       const client = ticket.account?.name || 'Unknown'
       clientCount[client] = (clientCount[client] || 0) + 1
 
-      // Category (from tags)
       if (ticket.tags && Array.isArray(ticket.tags)) {
-        for (const tag of ticket.tags) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const tag of ticket.tags as any[]) {
           categoryCount[tag] = (categoryCount[tag] || 0) + 1
         }
       }
     }
 
-    // Format responses
     const statusData = Object.entries(statusCount).map(([key, value]) => ({
       name: key,
       value,
