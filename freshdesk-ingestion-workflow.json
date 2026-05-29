@@ -1,0 +1,231 @@
+{
+  "name": "CS Risk — Freshdesk Ingestion Pipeline",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 15 }]
+        }
+      },
+      "id": "schedule-15min",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 6 }]
+        }
+      },
+      "id": "schedule-6h",
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 700]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 1 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-daily",
+      "name": "Daily at 1am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 900]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NEXT_APP_URL }}/api/freshdesk/sync",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "secret", "value": "={{ $env.INGEST_SECRET }}" }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "sync-15min",
+      "name": "Sync: Tickets (15min)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 500]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NEXT_APP_URL }}/api/freshdesk/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "secret", "value": "={{ $env.INGEST_SECRET }}" },
+            { "name": "mode", "value": "incremental" },
+            { "name": "includeConversations", "value": true },
+            { "name": "conversationDaysSince", "value": 2 },
+            { "name": "extractSignals", "value": true }
+          ]
+        },
+        "options": {
+          "timeout": 300000,
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "ingest-6h",
+      "name": "Ingest: Full Incremental (6h)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 700]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NEXT_APP_URL }}/api/freshdesk/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "secret", "value": "={{ $env.INGEST_SECRET }}" },
+            { "name": "mode", "value": "full" },
+            { "name": "includeConversations", "value": true },
+            { "name": "conversationDaysSince", "value": 30 },
+            { "name": "extractSignals", "value": true }
+          ]
+        },
+        "options": {
+          "timeout": 300000,
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "ingest-daily",
+      "name": "Ingest: Full Sync (Daily)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 900]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-success-6h",
+      "name": "Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 700]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NEXT_APP_URL }}/api/ai/score-accounts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "secret", "value": "={{ $env.INGEST_SECRET }}" },
+            { "name": "mode", "value": "changed-only" }
+          ]
+        },
+        "options": {
+          "timeout": 300000,
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "ai-score",
+      "name": "AI: Score Accounts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 660]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const result = $input.item.json;\nconst summary = {\n  timestamp: new Date().toISOString(),\n  companies: result.ingest?.companies,\n  tickets: result.ingest?.tickets,\n  conversations: result.ingest?.conversations,\n  signals: result.signals,\n  durationMs: result.totalDurationMs,\n};\nconsole.log('[CS Risk Ingest]', JSON.stringify(summary, null, 2));\nreturn { json: summary };"
+      },
+      "id": "log-result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 780]
+    }
+  ],
+
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [[{ "node": "Sync: Tickets (15min)", "type": "main", "index": 0 }]]
+    },
+    "Every 6 Hours": {
+      "main": [[{ "node": "Ingest: Full Incremental (6h)", "type": "main", "index": 0 }]]
+    },
+    "Daily at 1am": {
+      "main": [[{ "node": "Ingest: Full Sync (Daily)", "type": "main", "index": 0 }]]
+    },
+    "Ingest: Full Incremental (6h)": {
+      "main": [[{ "node": "Succeeded?", "type": "main", "index": 0 }]]
+    },
+    "Succeeded?": {
+      "main": [
+        [{ "node": "AI: Score Accounts", "type": "main", "index": 0 }],
+        [{ "node": "Log Result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ingest: Full Sync (Daily)": {
+      "main": [[{ "node": "AI: Score Accounts", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+
+  "staticData": null,
+  "tags": ["cs-risk", "freshdesk", "ingestion"],
+  "pinData": {}
+}

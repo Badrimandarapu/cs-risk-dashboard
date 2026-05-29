@@ -1,6 +1,5 @@
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -51,7 +50,6 @@ model SupportTicket {
   
   account               Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   conversations         SupportConversation[]
-  signals               OperationalSignal[]
 
   @@index([accountId])
   @@index([status])
@@ -77,7 +75,7 @@ model SupportConversation {
 }
 
 model Stakeholder {
-  id                    BigInt    @id
+  id                    BigInt    @id @default(autoincrement())
   freshdeskId           BigInt    @unique
   accountId             String
   email                 String    @unique
