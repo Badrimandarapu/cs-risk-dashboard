@@ -14,12 +14,27 @@ interface TicketRow {
   requesterId: bigint | null
 }
 
-// Fetch ALL support tickets - excluding requester 36016928761
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const range = searchParams.get('range') || '1month'
+
+    // Calculate date range
+    const now = new Date()
+    let startDate = new Date()
+    
+    if (range === '7days') {
+      startDate.setDate(now.getDate() - 7)
+    } else if (range === '1month') {
+      startDate.setMonth(now.getMonth() - 1)
+    } else if (range === '3months') {
+      startDate.setMonth(now.getMonth() - 3)
+    }
+
     const tickets = await prisma.supportTicket.findMany({
       where: {
-        requesterId: { not: BigInt(36016928761) }
+        requesterId: { not: BigInt(36016928761) },
+        createdAt: { gte: startDate }
       },
       select: {
         id: true,

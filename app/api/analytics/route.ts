@@ -2,15 +2,26 @@ import { NextResponse } from 'next/server'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const prisma = require('@/lib/db/prisma').prisma as any
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const range = searchParams.get('range') || '1month'
+
+    // Calculate date range
+    const now = new Date()
+    let startDate = new Date()
+    
+    if (range === '7days') {
+      startDate.setDate(now.getDate() - 7)
+    } else if (range === '1month') {
+      startDate.setMonth(now.getMonth() - 1)
+    } else if (range === '3months') {
+      startDate.setMonth(now.getMonth() - 3)
+    }
+
     const tickets = await prisma.supportTicket.findMany({
-      select: {
-        status: true,
-        priority: true,
-        account: { select: { name: true } },
-        tags: true,
-      },
+      where: { createdAt: { gte: startDate } },
+      select: { status: true, priority: true, account: { select: { name: true } }, tags: true },
     })
 
     const statusCount: Record<string, number> = { 'Open': 0, 'Pending': 0, 'Resolved': 0 }
@@ -22,7 +33,7 @@ export async function GET() {
     for (const ticket of tickets as any[]) {
       if (ticket.status === 2) statusCount['Open']++
       else if (ticket.status === 3) statusCount['Pending']++
-      else if (ticket.status === 4 || ticket.status === 5) statusCount['Resolved']++ // Combine closed+resolved
+      else if (ticket.status === 4 || ticket.status === 5) statusCount['Resolved']++
 
       const priorityMap: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Urgent' }
       const priority = priorityMap[ticket.priority]
