@@ -13,7 +13,7 @@ interface TicketRow {
   isEscalated: boolean
 }
 
-// Updated tickets API - Force redeploy version 2
+// Fetch ALL support tickets - removed 500 limit
 export async function GET() {
   try {
     const tickets = await prisma.supportTicket.findMany({
@@ -28,7 +28,6 @@ export async function GET() {
         isEscalated: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: 500,
     })
 
     const statusMap: Record<number, string> = { 2: 'Open', 3: 'Pending', 4: 'Resolved', 5: 'Closed' }
