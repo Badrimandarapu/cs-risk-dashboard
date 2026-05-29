@@ -25,12 +25,12 @@ export async function GET() {
       take: 100,
     })
 
-    const formatted = accounts.map(a => {
+    const formatted = accounts.map((a: any) => {
       const openTickets = a.tickets.length
-      const criticalTickets = a.tickets.filter(t => t.priority === 4).length
-      const escalatedTickets = a.tickets.filter(t => t.isEscalated).length
-      const criticalSignals = a.signals.filter(s => s.severity === 'CRITICAL').length
-      const highSignals = a.signals.filter(s => s.severity === 'HIGH').length
+      const criticalTickets = a.tickets.filter((t: any) => t.priority === 4).length
+      const escalatedTickets = a.tickets.filter((t: any) => t.isEscalated).length
+      const criticalSignals = a.signals.filter((s: any) => s.severity === 'CRITICAL').length
+      const highSignals = a.signals.filter((s: any) => s.severity === 'HIGH').length
       const latestHealth = a.healthScores[0]
 
       // Derive status from signals + tickets
