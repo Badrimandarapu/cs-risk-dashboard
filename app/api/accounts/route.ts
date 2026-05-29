@@ -9,17 +9,11 @@ export async function GET() {
       include: {
         _count: { select: { tickets: true, signals: true, stakeholders: true } },
         tickets: {
-          where: { status: { notIn: [4, 5] } },
-          select: { priority: true, status: true, isEscalated: true },
+          select: { priority: true, status: true, isEscalated: true, metadata: true },
         },
         signals: {
           where: { isActive: true },
           select: { severity: true, signalType: true },
-        },
-        healthScores: {
-          orderBy: { measuredAt: 'desc' },
-          take: 1,
-          select: { healthScore: true, riskLevel: true, escalationRisk: true },
         },
       },
       orderBy: { lastActivity: 'desc' },
@@ -27,50 +21,59 @@ export async function GET() {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formatted = (accounts as any[]).map((a: any) => {
-      const openTickets = a.tickets.length
-      const criticalTickets = a.tickets.filter((t: any) => t.priority === 4).length
+      // OPEN = all tickets with status 2 (Open) or 3 (Pending)
+      const openTickets = a.tickets.filter((t: any) => t.status === 2 || t.status === 3).length
+      
+      // All tickets for this account
+      const totalTickets = a.tickets.length
+      
+      // SLA Breached tickets
+      const slaBreachedTickets = a.tickets.filter((t: any) => (t.metadata as any)?.slaBreached === true).length
+      
+      // CRITICAL = percentage of SLA breached tickets / total tickets for that client
+      const criticalPercentage = totalTickets > 0 ? (slaBreachedTickets / totalTickets) * 100 : 0
+      
+      // HEALTH = opposite of critical (100 - critical%)
+      const health = Math.round(100 - criticalPercentage)
+      
+      // Escalated tickets
       const escalatedTickets = a.tickets.filter((t: any) => t.isEscalated).length
-      const criticalSignals = a.signals.filter((s: any) => s.severity === 'CRITICAL').length
-      const highSignals = a.signals.filter((s: any) => s.severity === 'HIGH').length
-      const latestHealth = a.healthScores[0]
-
-      let status = 'healthy'
-      if (criticalSignals > 0 || escalatedTickets > 0 || criticalTickets >= 3) status = 'critical'
-      else if (highSignals > 0 || criticalTickets >= 1 || openTickets >= 5) status = 'warning'
-
-      const healthScore = latestHealth?.healthScore ?? (
-        status === 'critical' ? 25 + Math.random() * 20 :
-        status === 'warning' ? 45 + Math.random() * 20 :
-        70 + Math.random() * 25
-      )
-
-      const meta = a.metadata as Record<string, unknown>
 
       return {
         id: a.id,
         name: a.name,
         displayName: a.displayName ?? a.name,
-        industry: (meta?.industry as string) ?? 'Unknown',
-        tier: (meta?.accountTier as string) ?? 'Standard',
-        health: Math.round(healthScore),
-        status,
+        health,
+        status: criticalPercentage > 20 ? 'critical' : criticalPercentage > 10 ? 'warning' : 'healthy',
         openTickets,
-        criticalTickets,
+        criticalTickets: slaBreachedTickets,
         escalatedTickets,
         activeSignals: a.signals.length,
         stakeholders: a._count.stakeholders,
-        riskLevel: latestHealth?.riskLevel ?? status.toUpperCase(),
+        riskLevel: criticalPercentage > 20 ? 'CRITICAL' : criticalPercentage > 10 ? 'HIGH' : 'HEALTHY',
         lastActivity: a.lastActivity,
       }
     })
 
+    // Sort: critical first
     formatted.sort((a: any, b: any) => {
       const order = { critical: 0, warning: 1, healthy: 2 }
       return (order[a.status as keyof typeof order] ?? 3) - (order[b.status as keyof typeof order] ?? 3)
     })
 
-    return NextResponse.json({ accounts: formatted, total: formatted.length })
+    // Calculate dashboard totals
+    const totalAccounts = formatted.length
+    const healthy = formatted.filter((a: any) => a.status === 'healthy').length
+    const critical = formatted.filter((a: any) => a.status === 'critical').length
+    const avgHealth = formatted.length > 0 ? Math.round(formatted.reduce((s: number, a: any) => s + a.health, 0) / formatted.length) : 0
+
+    return NextResponse.json({ 
+      accounts: formatted, 
+      total: totalAccounts,
+      summary: { totalAccounts, healthy, critical, avgHealth }
+    })
   } catch (err: unknown) {
+    console.error('Accounts error:', err)
     return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }
 }
