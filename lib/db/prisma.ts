@@ -1,12 +1,9 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaNeonHttp } from '@prisma/adapter-neon'
-import { neon } from '@neondatabase/serverless'
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL!
-  const sql = neon(connectionString)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adapter = new PrismaNeonHttp(sql as any, connectionString)
+  const adapter = new PrismaNeonHttp(process.env.DATABASE_URL!) as any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new PrismaClient({ adapter } as any)
 }
