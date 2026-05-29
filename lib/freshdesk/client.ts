@@ -226,3 +226,4 @@ export class FreshdeskClient {
     return this.requestCount
   }
 }
+

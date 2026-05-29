@@ -88,3 +88,4 @@ export async function extractAllSignals(): Promise<{ accountsProcessed: number; 
   }
   return { accountsProcessed: accounts.length, totalSignals, durationMs: Date.now() - start }
 }
+

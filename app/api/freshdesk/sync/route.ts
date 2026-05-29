@@ -21,3 +21,4 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, sync: ticketResult, signals: signalResult, durationMs: Date.now() - start, syncedSince: since })
 }
+

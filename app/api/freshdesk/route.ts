@@ -39,3 +39,4 @@ export async function GET() {
   const allOk = (checks.freshdesk as { ok: boolean }).ok && (checks.database as { ok: boolean }).ok
   return NextResponse.json({ status: allOk ? 'healthy' : 'degraded', checks }, { status: allOk ? 200 : 207 })
 }
+

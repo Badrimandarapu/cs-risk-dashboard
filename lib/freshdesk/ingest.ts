@@ -186,3 +186,4 @@ export async function runFullIngest(options: { updatedSince?: string; includeCon
   }
   return { companies, contacts, tickets, conversations, totalDurationMs: Date.now() - totalStart, startedAt, completedAt: new Date().toISOString() }
 }
+

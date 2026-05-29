@@ -27,3 +27,4 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json({ message: 'CS Risk Ingest API — POST to trigger ingestion' })
 }
+
