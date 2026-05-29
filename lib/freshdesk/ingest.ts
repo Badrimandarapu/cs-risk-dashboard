@@ -21,6 +21,11 @@ export interface FullIngestResult {
   completedAt: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toJson(obj: unknown): any {
+  return JSON.parse(JSON.stringify(obj ?? {}))
+}
+
 async function logSync(entity: string, status: string, fetched: number, processed: number, failed: number, durationMs: number, errorMessage?: string) {
   try {
     await prisma.syncLog.create({
@@ -43,17 +48,11 @@ export async function ingestCompanies(client: FreshdeskClient): Promise<IngestRe
     fetched += batch.length
     for (const company of batch) {
       try {
+        const meta = toJson({ description: company.description, note: company.note, domains: company.domains, healthScore: company.health_score, accountTier: company.account_tier, industry: company.industry, renewalDate: company.renewal_date, customFields: company.custom_fields })
         await prisma.account.upsert({
           where: { freshdeskCompanyId: BigInt(company.id) },
-          create: {
-            freshdeskCompanyId: BigInt(company.id), name: company.name, displayName: company.name,
-            isActive: true, lastActivity: new Date(),
-            metadata: { description: company.description, note: company.note, domains: company.domains, healthScore: company.health_score, accountTier: company.account_tier, industry: company.industry, renewalDate: company.renewal_date, customFields: company.custom_fields },
-          },
-          update: {
-            name: company.name, displayName: company.name, lastActivity: new Date(),
-            metadata: { description: company.description, note: company.note, domains: company.domains, healthScore: company.health_score, accountTier: company.account_tier, industry: company.industry, renewalDate: company.renewal_date, customFields: company.custom_fields },
-          },
+          create: { freshdeskCompanyId: BigInt(company.id), name: company.name, displayName: company.name, isActive: true, lastActivity: new Date(), metadata: meta },
+          update: { name: company.name, displayName: company.name, lastActivity: new Date(), metadata: meta },
         })
         upserted++
       } catch (err: unknown) { failed++; errors.push(`Company ${company.id}: ${(err as Error).message}`) }
@@ -87,10 +86,11 @@ export async function ingestContacts(client: FreshdeskClient, updatedSince?: str
           }
           accountId = unassignedAccountId
         }
+        const meta = toJson({ phone: contact.phone, mobile: contact.mobile, tags: contact.tags, customFields: contact.custom_fields })
         await prisma.stakeholder.upsert({
           where: { freshdeskId: BigInt(contact.id) },
-          create: { freshdeskId: BigInt(contact.id), accountId, email: contact.email ?? `contact-${contact.id}@unknown.invalid`, name: contact.name, title: contact.job_title, isExecutive: isExecutiveContact(contact.job_title), isActive: contact.active, firstSeen: new Date(contact.created_at), lastInvolved: contact.updated_at ? new Date(contact.updated_at) : null, metadata: { phone: contact.phone, mobile: contact.mobile, tags: contact.tags, customFields: contact.custom_fields } },
-          update: { accountId, name: contact.name, title: contact.job_title, isExecutive: isExecutiveContact(contact.job_title), isActive: contact.active, lastInvolved: contact.updated_at ? new Date(contact.updated_at) : null, metadata: { phone: contact.phone, mobile: contact.mobile, tags: contact.tags, customFields: contact.custom_fields } },
+          create: { freshdeskId: BigInt(contact.id), accountId, email: contact.email ?? `contact-${contact.id}@unknown.invalid`, name: contact.name, title: contact.job_title, isExecutive: isExecutiveContact(contact.job_title), isActive: contact.active, firstSeen: new Date(contact.created_at), lastInvolved: contact.updated_at ? new Date(contact.updated_at) : null, metadata: meta },
+          update: { accountId, name: contact.name, title: contact.job_title, isExecutive: isExecutiveContact(contact.job_title), isActive: contact.active, lastInvolved: contact.updated_at ? new Date(contact.updated_at) : null, metadata: meta },
         })
         upserted++
       } catch (err: unknown) { failed++; errors.push(`Contact ${contact.id}: ${(err as Error).message}`) }
@@ -126,10 +126,13 @@ export async function ingestTickets(client: FreshdeskClient, updatedSince?: stri
         let firstResponseMinutes: number | null = null
         if (ticket.stats?.first_responded_at && ticket.created_at) firstResponseMinutes = Math.round((new Date(ticket.stats.first_responded_at).getTime() - new Date(ticket.created_at).getTime()) / 60000)
 
+        const meta = toJson({ source: ticket.source, type: ticket.type, slaBreached, resolutionTimeMinutes, firstResponseMinutes, stats: ticket.stats })
+        const customFields = toJson(ticket.custom_fields)
+
         await prisma.supportTicket.upsert({
           where: { id: BigInt(ticket.id) },
-          create: { id: BigInt(ticket.id), accountId, subject: ticket.subject, description: ticket.description_text ?? ticket.description ?? '', priority: ticket.priority, status: ticket.status, createdAt: new Date(ticket.created_at), updatedAt: new Date(ticket.updated_at), resolvedAt: ticket.resolved_at ? new Date(ticket.resolved_at) : null, dueBy: ticket.due_by ? new Date(ticket.due_by) : null, firstResponseDue: ticket.fr_due_by ? new Date(ticket.fr_due_by) : null, requesterId: ticket.requester_id ? BigInt(ticket.requester_id) : null, agentId: ticket.responder_id ? BigInt(ticket.responder_id) : null, groupId: ticket.group_id ? BigInt(ticket.group_id) : null, reopenedCount: ticket.reopen_count ?? 0, isEscalated, tags: ticket.tags ?? [], customFields: ticket.custom_fields ?? {}, metadata: { source: ticket.source, type: ticket.type, slaBreached, resolutionTimeMinutes, firstResponseMinutes, stats: ticket.stats } },
-          update: { accountId, subject: ticket.subject, description: ticket.description_text ?? ticket.description ?? '', priority: ticket.priority, status: ticket.status, updatedAt: new Date(ticket.updated_at), resolvedAt: ticket.resolved_at ? new Date(ticket.resolved_at) : null, dueBy: ticket.due_by ? new Date(ticket.due_by) : null, agentId: ticket.responder_id ? BigInt(ticket.responder_id) : null, reopenedCount: ticket.reopen_count ?? 0, isEscalated, tags: ticket.tags ?? [], customFields: ticket.custom_fields ?? {}, metadata: { source: ticket.source, type: ticket.type, slaBreached, resolutionTimeMinutes, firstResponseMinutes, stats: ticket.stats } },
+          create: { id: BigInt(ticket.id), accountId, subject: ticket.subject, description: ticket.description_text ?? ticket.description ?? '', priority: ticket.priority, status: ticket.status, createdAt: new Date(ticket.created_at), updatedAt: new Date(ticket.updated_at), resolvedAt: ticket.resolved_at ? new Date(ticket.resolved_at) : null, dueBy: ticket.due_by ? new Date(ticket.due_by) : null, firstResponseDue: ticket.fr_due_by ? new Date(ticket.fr_due_by) : null, requesterId: ticket.requester_id ? BigInt(ticket.requester_id) : null, agentId: ticket.responder_id ? BigInt(ticket.responder_id) : null, groupId: ticket.group_id ? BigInt(ticket.group_id) : null, reopenedCount: ticket.reopen_count ?? 0, isEscalated, tags: ticket.tags ?? [], customFields, metadata: meta },
+          update: { accountId, subject: ticket.subject, description: ticket.description_text ?? ticket.description ?? '', priority: ticket.priority, status: ticket.status, updatedAt: new Date(ticket.updated_at), resolvedAt: ticket.resolved_at ? new Date(ticket.resolved_at) : null, dueBy: ticket.due_by ? new Date(ticket.due_by) : null, agentId: ticket.responder_id ? BigInt(ticket.responder_id) : null, reopenedCount: ticket.reopen_count ?? 0, isEscalated, tags: ticket.tags ?? [], customFields, metadata: meta },
         })
         upserted++
         await prisma.account.update({ where: { id: accountId }, data: { lastActivity: new Date() } })
@@ -156,10 +159,11 @@ export async function ingestConversations(client: FreshdeskClient, options: { fu
         try {
           const text = conv.body_text ?? conv.body ?? ''
           const sentiment = analyzeSentiment(text)
+          const meta = toJson({ fromEmail: conv.from_email, source: conv.source, private: conv.private, frustrationLabels: sentiment.frustrationLabels, dominantSignal: sentiment.dominantSignal })
           await prisma.supportConversation.upsert({
             where: { id: BigInt(conv.id) },
-            create: { id: BigInt(conv.id), ticketId: BigInt(conv.ticket_id), body: text, senderId: conv.user_id ? BigInt(conv.user_id) : null, senderType: conv.incoming ? 'customer' : 'agent', createdAt: new Date(conv.created_at), sentimentScore: sentiment.score, hasFrustrationSignals: sentiment.hasFrustrationSignals, metadata: { fromEmail: conv.from_email, source: conv.source, private: conv.private, frustrationLabels: sentiment.frustrationLabels, dominantSignal: sentiment.dominantSignal } },
-            update: { body: text, sentimentScore: sentiment.score, hasFrustrationSignals: sentiment.hasFrustrationSignals, metadata: { fromEmail: conv.from_email, source: conv.source, private: conv.private, frustrationLabels: sentiment.frustrationLabels, dominantSignal: sentiment.dominantSignal } },
+            create: { id: BigInt(conv.id), ticketId: BigInt(conv.ticket_id), body: text, senderId: conv.user_id ? BigInt(conv.user_id) : null, senderType: conv.incoming ? 'customer' : 'agent', createdAt: new Date(conv.created_at), sentimentScore: sentiment.score, hasFrustrationSignals: sentiment.hasFrustrationSignals, metadata: meta },
+            update: { body: text, sentimentScore: sentiment.score, hasFrustrationSignals: sentiment.hasFrustrationSignals, metadata: meta },
           })
           upserted++
         } catch (err: unknown) { failed++; errors.push(`Conv ${conv.id}: ${(err as Error).message}`) }
@@ -176,7 +180,6 @@ export async function runFullIngest(options: { updatedSince?: string; includeCon
   const startedAt = new Date().toISOString()
   const totalStart = Date.now()
   const client = new FreshdeskClient()
-
   const companies = await ingestCompanies(client)
   const contacts = await ingestContacts(client, options.updatedSince)
   const tickets = await ingestTickets(client, options.updatedSince)
@@ -186,4 +189,3 @@ export async function runFullIngest(options: { updatedSince?: string; includeCon
   }
   return { companies, contacts, tickets, conversations, totalDurationMs: Date.now() - totalStart, startedAt, completedAt: new Date().toISOString() }
 }
-

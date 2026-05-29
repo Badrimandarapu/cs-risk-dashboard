@@ -1,5 +1,10 @@
 import { prisma } from '../db/prisma'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toJson(obj: unknown): any {
+  return JSON.parse(JSON.stringify(obj ?? {}))
+}
+
 export async function extractSignalsForAccount(accountId: string): Promise<number> {
   const signals: Array<{
     accountId: string; signalType: string; severity: string; confidence: number;
@@ -72,7 +77,7 @@ export async function extractSignalsForAccount(accountId: string): Promise<numbe
   if (signals.length > 0) {
     const signalTypes = [...new Set(signals.map(s => s.signalType))]
     await prisma.operationalSignal.updateMany({ where: { accountId, signalType: { in: signalTypes }, isActive: true }, data: { isActive: false, resolvedAt: now } })
-    await prisma.operationalSignal.createMany({ data: signals.map(s => ({ accountId: s.accountId, ticketId: s.ticketId ?? null, signalType: s.signalType, severity: s.severity, confidence: s.confidence, value: s.value, evidence: s.evidence, triggeredAt: s.triggeredAt, isActive: true })), skipDuplicates: true })
+    await prisma.operationalSignal.createMany({ data: signals.map(s => ({ accountId: s.accountId, ticketId: s.ticketId ?? null, signalType: s.signalType, severity: s.severity, confidence: s.confidence, value: toJson(s.value), evidence: s.evidence, triggeredAt: s.triggeredAt, isActive: true })), skipDuplicates: true })
   }
 
   return signals.length
@@ -88,4 +93,3 @@ export async function extractAllSignals(): Promise<{ accountsProcessed: number; 
   }
   return { accountsProcessed: accounts.length, totalSignals, durationMs: Date.now() - start }
 }
-
