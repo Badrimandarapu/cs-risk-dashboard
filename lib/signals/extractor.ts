@@ -21,23 +21,23 @@ export async function extractSignalsForAccount(accountId: string): Promise<numbe
     prisma.stakeholder.findMany({ where: { accountId }, select: { id: true, isExecutive: true, lastInvolved: true, involvementCount: true } }),
   ])
 
-  const openTickets = tickets.filter(t => t.status !== 4 && t.status !== 5)
+  const openTickets = tickets.filter((t: any) => t.status !== 4 && t.status !== 5)
   const criticalOpen = openTickets.filter(t => t.priority === 4)
 
-  const frequentReopens = tickets.filter(t => t.reopenedCount >= 2)
+  const frequentReopens = tickets.filter((t: any) => t.reopenedCount >= 2)
   if (frequentReopens.length > 0) {
     const maxReopens = Math.max(...frequentReopens.map(t => t.reopenedCount))
     signals.push({ accountId, signalType: 'REPEATED_REOPENS', severity: maxReopens >= 4 ? 'HIGH' : 'MEDIUM', confidence: Math.min(0.95, 0.5 + frequentReopens.length * 0.1), value: { ticketsWithReopens: frequentReopens.length, maxReopenCount: maxReopens }, evidence: `${frequentReopens.length} ticket(s) reopened multiple times (max ${maxReopens} reopens).`, triggeredAt: now })
   }
 
-  const last7 = recentTickets.filter(t => t.createdAt >= sevenDaysAgo).length
-  const prior = recentTickets.filter(t => t.createdAt < sevenDaysAgo).length
+  const last7 = recentTickets.filter((t: any) => t.createdAt >= sevenDaysAgo).length
+  const prior = recentTickets.filter((t: any) => t.createdAt < sevenDaysAgo).length
   const priorAvg = prior / (23 / 7)
   if (priorAvg > 0 && last7 >= priorAvg * 2 && last7 >= 3) {
     signals.push({ accountId, signalType: 'TICKET_SPIKE', severity: last7 >= priorAvg * 3 ? 'HIGH' : 'MEDIUM', confidence: 0.8, value: { last7Days: last7, priorWeeklyAverage: Math.round(priorAvg * 10) / 10 }, evidence: `Ticket volume this week (${last7}) is ${Math.round(last7 / priorAvg)}x the prior 3-week average.`, triggeredAt: now })
   }
 
-  const slaBreached = tickets.filter(t => (t.metadata as Record<string, unknown>)?.slaBreached === true)
+  const slaBreached = tickets.filter((t: any) => (t.metadata as Record<string, unknown>)?.slaBreached === true)
   if (slaBreached.length >= 2) {
     signals.push({ accountId, signalType: 'SLA_BREACH_CLUSTER', severity: slaBreached.length >= 5 ? 'CRITICAL' : slaBreached.length >= 3 ? 'HIGH' : 'MEDIUM', confidence: 0.9, value: { breachedCount: slaBreached.length, criticalBreaches: slaBreached.filter(t => t.priority === 4).length }, evidence: `${slaBreached.length} tickets with SLA breaches detected.`, triggeredAt: now })
   }
@@ -48,7 +48,7 @@ export async function extractSignalsForAccount(accountId: string): Promise<numbe
     signals.push({ accountId, signalType: 'SENTIMENT_DECLINE', severity: avgSentiment <= -0.6 ? 'CRITICAL' : avgSentiment <= -0.3 ? 'HIGH' : 'MEDIUM', confidence: Math.min(0.9, 0.4 + frustratedConvs.length * 0.05), value: { frustrationConversations: frustratedConvs.length, averageSentimentScore: Math.round(avgSentiment * 100) / 100 }, evidence: `${frustratedConvs.length} conversations with negative sentiment. Avg score: ${avgSentiment.toFixed(2)}.`, triggeredAt: now })
   }
 
-  const recentExecActivity = stakeholders.filter(s => s.isExecutive && s.lastInvolved && s.lastInvolved >= sevenDaysAgo)
+  const recentExecActivity = stakeholders.filter((s: any) => s.isExecutive && s.lastInvolved && s.lastInvolved >= sevenDaysAgo)
   if (recentExecActivity.length > 0) {
     signals.push({ accountId, signalType: 'EXECUTIVE_INVOLVEMENT', severity: 'HIGH', confidence: 0.85, value: { activeExecutives: recentExecActivity.length }, evidence: `${recentExecActivity.length} executive-level stakeholder(s) active in the last 7 days.`, triggeredAt: now })
   }
@@ -59,7 +59,7 @@ export async function extractSignalsForAccount(accountId: string): Promise<numbe
   }
 
   if (criticalOpen.length >= 1) {
-    const oldest = criticalOpen.reduce((a, b) => a.createdAt < b.createdAt ? a : b)
+    const oldest = criticalOpen.reduce((a: any, b: any) => a.createdAt < b.createdAt ? a : b)
     const daysOpen = Math.round((now.getTime() - oldest.createdAt.getTime()) / 86400000)
     signals.push({ accountId, signalType: 'CRITICAL_UNRESOLVED', severity: criticalOpen.length >= 3 ? 'CRITICAL' : 'HIGH', confidence: 0.9, value: { criticalOpenCount: criticalOpen.length, oldestOpenDays: daysOpen }, evidence: `${criticalOpen.length} critical-priority ticket(s) unresolved. Oldest open ${daysOpen} days.`, triggeredAt: now })
   }
