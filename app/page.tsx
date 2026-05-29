@@ -6,9 +6,11 @@ interface Account {
   id: string
   name: string
   health: number
+  healthColor: string
   status: string
   openTickets: number
-  criticalTickets: number
+  escalatedTickets: number
+  ticketTrend: { thisMonth: number; previousMonth: number; change: number }
 }
 
 export default function Dashboard() {
@@ -36,34 +38,36 @@ export default function Dashboard() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#fff' }}>
-      <div style={{ borderBottom: '1px solid #1e293b', padding: '2rem' }}>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold' }}>CS Risk Intelligence Dashboard</h1>
-        <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>Real-time Account Health • {accounts.length} Accounts</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <h1 className="text-3xl font-bold text-white">CS Risk Intelligence Dashboard</h1>
+          <p className="text-slate-400 mt-1">Real-time Account Health • {accounts.length} Accounts</p>
+        </div>
       </div>
 
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-          <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '1.5rem' }}>
-            <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Total Accounts</p>
-            <p style={{ fontSize: '2.25rem', fontWeight: 'bold', color: '#3b82f6', marginTop: '0.5rem' }}>{accounts.length}</p>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-700">
+            <p className="text-slate-400 text-sm font-medium">Total Accounts</p>
+            <p className="text-3xl font-bold text-white mt-2">{accounts.length}</p>
           </div>
-          <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '1.5rem' }}>
-            <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Healthy</p>
-            <p style={{ fontSize: '2.25rem', fontWeight: 'bold', color: '#10b981', marginTop: '0.5rem' }}>{healthy}</p>
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-700">
+            <p className="text-slate-400 text-sm font-medium">Healthy</p>
+            <p className="text-3xl font-bold text-green-400 mt-2">{healthy}</p>
           </div>
-          <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '1.5rem' }}>
-            <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Critical</p>
-            <p style={{ fontSize: '2.25rem', fontWeight: 'bold', color: '#ef4444', marginTop: '0.5rem' }}>{critical}</p>
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-700">
+            <p className="text-slate-400 text-sm font-medium">Critical</p>
+            <p className="text-3xl font-bold text-red-400 mt-2">{critical}</p>
           </div>
-          <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '1.5rem' }}>
-            <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Avg Health</p>
-            <p style={{ fontSize: '2.25rem', fontWeight: 'bold', color: '#f59e0b', marginTop: '0.5rem' }}>{avgHealth}</p>
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-700">
+            <p className="text-slate-400 text-sm font-medium">Avg Health</p>
+            <p className="text-3xl font-bold text-yellow-400 mt-2">{avgHealth}</p>
           </div>
         </div>
 
-        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '1.5rem', marginBottom: '2rem' }}>
-          <h3 style={{ fontWeight: '600', marginBottom: '1rem' }}>Health Trend</h3>
+        <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700 mb-12">
+          <h3 className="text-lg font-bold text-white mb-6">Health Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={healthTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -75,41 +79,52 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', overflow: 'hidden' }}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid #334155', backgroundColor: '#0f172a' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Accounts</h3>
+        <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+          <div className="p-6 border-b border-slate-700 bg-slate-900">
+            <h3 className="text-lg font-bold text-white">Accounts</h3>
           </div>
           {loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Loading...</div>
+            <div className="p-8 text-center text-slate-400">Loading...</div>
           ) : error ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>Error: {error}</div>
+            <div className="p-8 text-center text-red-400">Error: {error}</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #334155', backgroundColor: '#0f172a' }}>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Account</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600' }}>Health</th>
-                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600' }}>Open</th>
-                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600' }}>Critical</th>
-                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600' }}>Status</th>
+            <table className="w-full">
+              <thead className="bg-slate-900 border-b border-slate-700">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Account</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Health</th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Open</th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Trend</th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {accounts.slice(0, 15).map((a: Account) => (
-                  <tr key={a.id} style={{ borderBottom: '1px solid #334155' }}>
-                    <td style={{ padding: '1rem' }}>{a.name}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ width: '50px', height: '6px', backgroundColor: '#334155', borderRadius: '3px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${a.health}%`, backgroundColor: a.health >= 70 ? '#10b981' : a.health >= 40 ? '#f59e0b' : '#ef4444' }} />
+                  <tr key={a.id} className="border-b border-slate-700 hover:bg-slate-700/30">
+                    <td className="px-6 py-4 text-sm font-medium text-white">{a.name}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full rounded-full"
+                            style={{ width: `${a.health}%`, backgroundColor: a.healthColor }}
+                          />
                         </div>
-                        <span style={{ fontSize: '0.875rem' }}>{a.health}</span>
+                        <span className="text-sm font-bold text-white">{a.health}</span>
                       </div>
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem' }}>{a.openTickets}</td>
-                    <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: a.criticalTickets > 0 ? '#ef4444' : '#94a3b8' }}>{a.criticalTickets}</td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <span style={{ padding: '0.25rem 0.75rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600', backgroundColor: a.status === 'critical' ? '#7f1d1d' : a.status === 'warning' ? '#78350f' : '#064e3b', color: a.status === 'critical' ? '#fca5a5' : a.status === 'warning' ? '#fcd34d' : '#6ee7b7' }}>
+                    <td className="px-6 py-4 text-center text-sm text-slate-300">{a.openTickets}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`text-sm font-semibold ${a.ticketTrend.change > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                        {a.ticketTrend.change > 0 ? '↑' : '↓'} {Math.abs(a.ticketTrend.change)}%
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        a.status === 'critical' ? 'bg-red-500/20 text-red-400' :
+                        a.status === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-green-500/20 text-green-400'
+                      }`}>
                         {a.status}
                       </span>
                     </td>
