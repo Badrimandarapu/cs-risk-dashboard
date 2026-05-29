@@ -40,22 +40,24 @@ export async function GET() {
 
       // Calculate ticket trend
       let ticketTrend = 'healthy'
+      let healthColor = '#10b981' // green
+      
       if (previousMonthTickets > 0) {
         const percentageChange = ((thisMonthTickets - previousMonthTickets) / previousMonthTickets) * 100
         if (percentageChange > 20) {
           ticketTrend = 'critical' // Drastically increased
+          healthColor = '#ef4444' // red
         } else if (percentageChange > 0) {
           ticketTrend = 'warning' // Slight increase
+          healthColor = '#f59e0b' // yellow/orange
         } else {
           ticketTrend = 'healthy' // Stable or reduced
+          healthColor = '#10b981' // green
         }
       }
 
       // OPEN = all tickets with status 2 (Open) or 3 (Pending)
       const openTickets = a.tickets.filter((t: any) => t.status === 2 || t.status === 3).length
-      
-      // Health color mapping: red = critical, yellow/orange = warning, green = healthy
-      const healthColor = ticketTrend === 'critical' ? '#ef4444' : ticketTrend === 'warning' ? '#f59e0b' : '#10b981'
       
       // Health score: critical = low, warning = medium, healthy = high
       const health = ticketTrend === 'critical' ? 25 + Math.random() * 20 : ticketTrend === 'warning' ? 45 + Math.random() * 20 : 70 + Math.random() * 25
@@ -74,7 +76,7 @@ export async function GET() {
         escalatedTickets,
         activeSignals: a.signals.length,
         stakeholders: a._count.stakeholders,
-        riskLevel: ticketTrend === 'critical' ? 'CRITICAL' : ticketTrend === 'warning' ? 'HIGH' : 'HEALTHY',
+        riskLevel: ticketTrend === 'critical' ? 'CRITICAL' : ticketTrend === 'warning' ? 'WARNING' : 'HEALTHY',
         lastActivity: a.lastActivity,
         ticketTrend: {
           thisMonth: thisMonthTickets,
