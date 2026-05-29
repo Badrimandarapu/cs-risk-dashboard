@@ -23,7 +23,6 @@ export async function GET() {
         },
       },
       orderBy: { lastActivity: 'desc' },
-      take: 100,
     })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
