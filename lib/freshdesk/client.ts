@@ -196,7 +196,13 @@ export class FreshdeskClient {
       include: 'stats,requester,company',
       order_type: 'asc',
     }
-    if (updatedSince) params.updated_since = updatedSince
+    // Default to last 6 months if no updatedSince provided
+    if (updatedSince) {
+      params.updated_since = updatedSince
+    } else {
+      const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
+      params.updated_since = sixMonthsAgo.toISOString()
+    }
     yield* this.paginate<FreshdeskTicket>('/tickets', params)
   }
 
@@ -226,4 +232,3 @@ export class FreshdeskClient {
     return this.requestCount
   }
 }
-
