@@ -43,11 +43,6 @@ export default function Dashboard() {
     let aVal: any = a[sortKey]
     let bVal: any = b[sortKey]
     
-    if (sortKey === 'ticketTrend') {
-      aVal = a.ticketTrend.change
-      bVal = b.ticketTrend.change
-    }
-    
     if (typeof aVal === 'string') aVal = aVal.toLowerCase()
     if (typeof bVal === 'string') bVal = bVal.toLowerCase()
     
@@ -145,7 +140,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.slice(0, 15).map((a: Account) => (
+                {sorted.slice(0, 20).map((a: Account) => (
                   <tr key={a.id} className="border-b border-slate-700 hover:bg-slate-700/30">
                     <td className="px-6 py-4 text-sm font-medium text-white">{a.name}</td>
                     <td className="px-6 py-4">
