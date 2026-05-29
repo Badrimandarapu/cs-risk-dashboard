@@ -38,30 +38,40 @@ export async function GET() {
         return createdDate >= twoMonthsAgo && createdDate < oneMonthAgo
       }).length
 
-      // Calculate ticket trend
-      let ticketTrend = 'healthy'
-      let healthColor = '#10b981' // green
+      // Calculate ticket trend and health score
+      let health = 75 // default healthy
       
       if (previousMonthTickets > 0) {
         const percentageChange = ((thisMonthTickets - previousMonthTickets) / previousMonthTickets) * 100
         if (percentageChange > 20) {
-          ticketTrend = 'critical' // Drastically increased
-          healthColor = '#ef4444' // red
+          health = 25 + Math.random() * 15 // Critical: 25-40
         } else if (percentageChange > 0) {
-          ticketTrend = 'warning' // Slight increase
-          healthColor = '#f59e0b' // yellow/orange
+          health = 45 + Math.random() * 20 // Warning: 45-65
         } else {
-          ticketTrend = 'healthy' // Stable or reduced
-          healthColor = '#10b981' // green
+          health = 75 + Math.random() * 20 // Healthy: 75-95
         }
+      }
+
+      health = Math.round(health)
+
+      // Determine color and status based on HEALTH SCORE RANGES
+      let healthColor = '#10b981' // green by default
+      let status = 'healthy'
+      
+      if (health <= 40) {
+        healthColor = '#ef4444' // red: 0-40
+        status = 'critical'
+      } else if (health <= 69) {
+        healthColor = '#f59e0b' // yellow/orange: 41-69
+        status = 'warning'
+      } else {
+        healthColor = '#10b981' // green: 70-100
+        status = 'healthy'
       }
 
       // OPEN = all tickets with status 2 (Open) or 3 (Pending)
       const openTickets = a.tickets.filter((t: any) => t.status === 2 || t.status === 3).length
       
-      // Health score: critical = low, warning = medium, healthy = high
-      const health = ticketTrend === 'critical' ? 25 + Math.random() * 20 : ticketTrend === 'warning' ? 45 + Math.random() * 20 : 70 + Math.random() * 25
-
       // Escalated tickets
       const escalatedTickets = a.tickets.filter((t: any) => t.isEscalated).length
 
@@ -69,14 +79,14 @@ export async function GET() {
         id: a.id,
         name: a.name,
         displayName: a.displayName ?? a.name,
-        health: Math.round(health),
+        health,
         healthColor,
-        status: ticketTrend,
+        status,
         openTickets,
         escalatedTickets,
         activeSignals: a.signals.length,
         stakeholders: a._count.stakeholders,
-        riskLevel: ticketTrend === 'critical' ? 'CRITICAL' : ticketTrend === 'warning' ? 'WARNING' : 'HEALTHY',
+        riskLevel: status === 'critical' ? 'CRITICAL' : status === 'warning' ? 'WARNING' : 'HEALTHY',
         lastActivity: a.lastActivity,
         ticketTrend: {
           thisMonth: thisMonthTickets,
