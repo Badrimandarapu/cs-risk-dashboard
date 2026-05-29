@@ -1,14 +1,13 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaNeon } from '@prisma/adapter-neon'
-import { neonConfig, Pool } from '@neondatabase/serverless'
-import ws from 'ws'
-
-neonConfig.webSocketConstructor = ws
+import { PrismaNeonHttp } from '@prisma/adapter-neon'
+import { neon } from '@neondatabase/serverless'
 
 function createPrismaClient() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL! })
-  const adapter = new PrismaNeon(pool)
-  return new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0])
+  const sql = neon(process.env.DATABASE_URL!)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adapter = new PrismaNeonHttp(sql as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new PrismaClient({ adapter } as any)
 }
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }

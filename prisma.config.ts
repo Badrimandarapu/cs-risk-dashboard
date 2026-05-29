@@ -1,17 +1,15 @@
 import path from 'node:path'
 import { defineConfig } from 'prisma/config'
-import { PrismaNeon } from '@prisma/adapter-neon'
-import { neonConfig, Pool } from '@neondatabase/serverless'
-import ws from 'ws'
-
-neonConfig.webSocketConstructor = ws
+import { PrismaNeonHttp } from '@prisma/adapter-neon'
+import { neon } from '@neondatabase/serverless'
 
 export default defineConfig({
   schema: path.join('prisma', 'schema.prisma'),
   migrate: {
     adapter: () => {
-      const pool = new Pool({ connectionString: process.env.DATABASE_URL! })
-      return new PrismaNeon(pool)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sql = neon(process.env.DATABASE_URL!)
+      return new PrismaNeonHttp(sql as any)
     },
   },
 })
