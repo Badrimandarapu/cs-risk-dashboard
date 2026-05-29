@@ -6,17 +6,11 @@ import ws from 'ws'
 
 neonConfig.webSocketConstructor = ws
 
-const connectionString = process.env.DATABASE_URL!
-
 export default defineConfig({
-  earlyAccess: true,
   schema: path.join('prisma', 'schema.prisma'),
-  datasource: {
-    url: connectionString,
-  },
   migrate: {
     adapter: () => {
-      const pool = new Pool({ connectionString })
+      const pool = new Pool({ connectionString: process.env.DATABASE_URL! })
       return new PrismaNeon(pool)
     },
   },
