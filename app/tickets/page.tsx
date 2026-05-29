@@ -21,6 +21,9 @@ const statusColors: Record<string, string> = {
   'Closed': '#6b7280',
 }
 
+type SortKey = 'id' | 'subject' | 'account' | 'status' | 'priority' | 'createdAt'
+type SortOrder = 'asc' | 'desc'
+
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [statusData, setStatusData] = useState<any[]>([])
@@ -28,6 +31,8 @@ export default function TicketsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
   useEffect(() => {
     fetch('/api/tickets')
@@ -35,7 +40,6 @@ export default function TicketsPage() {
       .then(d => {
         setTickets(d.tickets || [])
         
-        // Calculate status distribution - EXCLUDE CLOSED
         const statusCount: Record<string, number> = {}
         for (const t of d.tickets || []) {
           if (t.status !== 'Closed') {
@@ -54,6 +58,15 @@ export default function TicketsPage() {
       .catch(() => setLoading(false))
   }, [])
 
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortOrder('desc')
+    }
+  }
+
   const filtered = tickets.filter(t => {
     if (statusFilter !== 'all' && t.status !== statusFilter) return false
     if (priorityFilter !== 'all' && t.priority.toString() !== priorityFilter) return false
@@ -61,17 +74,38 @@ export default function TicketsPage() {
     return true
   })
 
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal: any = a[sortKey]
+    let bVal: any = b[sortKey]
+    
+    if (sortKey === 'account') {
+      aVal = a.account.name
+      bVal = b.account.name
+    }
+    
+    if (typeof aVal === 'string') aVal = aVal.toLowerCase()
+    if (typeof bVal === 'string') bVal = bVal.toLowerCase()
+    
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const SortIcon = ({ column }: { column: SortKey }) => {
+    if (sortKey !== column) return <span style={{ opacity: 0.3 }}>⇅</span>
+    return <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <div className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <h1 className="text-3xl font-bold text-white">Support Tickets</h1>
-          <p className="text-slate-400 mt-1">{filtered.length} / {tickets.length} tickets</p>
+          <p className="text-slate-400 mt-1">{sorted.length} / {tickets.length} tickets</p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Status Distribution Chart - EXCLUDES CLOSED */}
         {!loading && statusData.length > 0 && (
           <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700 mb-8">
             <h3 className="text-lg font-bold text-white mb-6">Ticket Status Distribution</h3>
@@ -88,21 +122,9 @@ export default function TicketsPage() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              {statusData.map((item) => (
-                <div key={item.status} className="flex items-center gap-2 p-2 rounded-lg bg-slate-700/50">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <div className="flex-1">
-                    <p className="text-xs text-slate-400">{item.status}</p>
-                    <p className="text-sm font-bold text-white">{item.count}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
-        {/* Filters */}
         <div className="mb-8 space-y-4">
           <input
             type="text"
@@ -137,7 +159,6 @@ export default function TicketsPage() {
           </div>
         </div>
 
-        {/* Tickets Table */}
         {loading ? (
           <div className="text-center py-12 text-slate-400">Loading tickets...</div>
         ) : (
@@ -145,16 +166,28 @@ export default function TicketsPage() {
             <table className="w-full">
               <thead className="bg-slate-900 border-b border-slate-700">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Ticket ID</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Subject</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Account</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Status</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Priority</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Created</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('id')}>
+                    ID <SortIcon column="id" />
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('subject')}>
+                    Subject <SortIcon column="subject" />
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('account')}>
+                    Account <SortIcon column="account" />
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('status')}>
+                    Status <SortIcon column="status" />
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('priority')}>
+                    Priority <SortIcon column="priority" />
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('createdAt')}>
+                    Created <SortIcon column="createdAt" />
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((ticket) => (
+                {sorted.map((ticket) => (
                   <tr key={ticket.id} className="border-b border-slate-700 hover:bg-slate-700/30">
                     <td className="px-6 py-4 text-sm font-mono text-blue-400">{ticket.id}</td>
                     <td className="px-6 py-4 text-sm text-white">{ticket.subject.substring(0, 50)}</td>
@@ -186,7 +219,7 @@ export default function TicketsPage() {
                 ))}
               </tbody>
             </table>
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <div className="text-center py-12 text-slate-400">No tickets found</div>
             )}
           </div>

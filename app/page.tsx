@@ -13,10 +13,15 @@ interface Account {
   ticketTrend: { thisMonth: number; previousMonth: number; change: number }
 }
 
+type SortKey = 'name' | 'health' | 'openTickets' | 'escalatedTickets' | 'status'
+type SortOrder = 'asc' | 'desc'
+
 export default function Dashboard() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('health')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
   useEffect(() => {
     fetch('/api/accounts')
@@ -24,6 +29,32 @@ export default function Dashboard() {
       .then(data => { setAccounts(data.accounts ?? []); setLoading(false) })
       .catch(err => { setError(err.message); setLoading(false) })
   }, [])
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortOrder('desc')
+    }
+  }
+
+  const sorted = [...accounts].sort((a, b) => {
+    let aVal: any = a[sortKey]
+    let bVal: any = b[sortKey]
+    
+    if (sortKey === 'ticketTrend') {
+      aVal = a.ticketTrend.change
+      bVal = b.ticketTrend.change
+    }
+    
+    if (typeof aVal === 'string') aVal = aVal.toLowerCase()
+    if (typeof bVal === 'string') bVal = bVal.toLowerCase()
+    
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
+    return 0
+  })
 
   const avgHealth = accounts.length > 0 ? Math.round(accounts.reduce((s: number, a: Account) => s + a.health, 0) / accounts.length) : 0
   const critical = accounts.filter((a: Account) => a.status === 'critical').length
@@ -36,6 +67,11 @@ export default function Dashboard() {
     { month: 'Apr', value: Math.min(100, avgHealth + 10) },
     { month: 'May', value: avgHealth },
   ]
+
+  const SortIcon = ({ column }: { column: SortKey }) => {
+    if (sortKey !== column) return <span style={{ opacity: 0.3 }}>⇅</span>
+    return <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -81,7 +117,7 @@ export default function Dashboard() {
 
         <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
           <div className="p-6 border-b border-slate-700 bg-slate-900">
-            <h3 className="text-lg font-bold text-white">Accounts</h3>
+            <h3 className="text-lg font-bold text-white">Accounts (Click column to sort)</h3>
           </div>
           {loading ? (
             <div className="p-8 text-center text-slate-400">Loading...</div>
@@ -91,15 +127,25 @@ export default function Dashboard() {
             <table className="w-full">
               <thead className="bg-slate-900 border-b border-slate-700">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Account</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Health</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Open</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Trend</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('name')}>
+                    Account <SortIcon column="name" />
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('health')}>
+                    Health <SortIcon column="health" />
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('openTickets')}>
+                    Open <SortIcon column="openTickets" />
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('escalatedTickets')}>
+                    Escalated <SortIcon column="escalatedTickets" />
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-800" onClick={() => handleSort('status')}>
+                    Status <SortIcon column="status" />
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {accounts.slice(0, 15).map((a: Account) => (
+                {sorted.slice(0, 15).map((a: Account) => (
                   <tr key={a.id} className="border-b border-slate-700 hover:bg-slate-700/30">
                     <td className="px-6 py-4 text-sm font-medium text-white">{a.name}</td>
                     <td className="px-6 py-4">
@@ -114,11 +160,7 @@ export default function Dashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center text-sm text-slate-300">{a.openTickets}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`text-sm font-semibold ${a.ticketTrend.change > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                        {a.ticketTrend.change > 0 ? '↑' : '↓'} {Math.abs(a.ticketTrend.change)}%
-                      </span>
-                    </td>
+                    <td className="px-6 py-4 text-center text-sm text-slate-300">{a.escalatedTickets}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         a.status === 'critical' ? 'bg-red-500/20 text-red-400' :
