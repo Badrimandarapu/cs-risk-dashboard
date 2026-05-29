@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { FreshdeskClient } from '@/lib/freshdesk/client'
-import { ingestTickets } from '@/lib/freshdesk/ingest'
-import { extractAllSignals } from '@/lib/signals/extractor'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { FreshdeskClient } = require('@/lib/freshdesk/client') as any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { ingestTickets } = require('@/lib/freshdesk/ingest') as any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { extractAllSignals } = require('@/lib/signals/extractor') as any
 
 export const maxDuration = 60
 
@@ -14,11 +17,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const client = new FreshdeskClient()
-  const since = new Date(Date.now() - 75 * 60 * 1000).toISOString()
-  const ticketResult = await ingestTickets(client, since)
-  const signalResult = await extractAllSignals()
+  try {
+    const client = new FreshdeskClient()
+    const since = new Date(Date.now() - 75 * 60 * 1000).toISOString()
+    const ticketResult = await ingestTickets(client, since)
+    const signalResult = await extractAllSignals()
 
-  return NextResponse.json({ success: true, sync: ticketResult, signals: signalResult, durationMs: Date.now() - start, syncedSince: since })
+    return NextResponse.json({
+      success: true,
+      sync: ticketResult,
+      signals: signalResult,
+      durationMs: Date.now() - start,
+      syncedSince: since,
+    })
+  } catch (err: unknown) {
+    console.error('Sync error:', err)
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+  }
 }
-
