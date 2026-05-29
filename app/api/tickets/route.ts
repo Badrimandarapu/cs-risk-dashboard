@@ -11,12 +11,16 @@ interface TicketRow {
   createdAt: Date
   resolvedAt: Date | null
   isEscalated: boolean
+  requesterId: bigint | null
 }
 
-// Fetch ALL support tickets - removed 500 limit
+// Fetch ALL support tickets - excluding requester 36016928761
 export async function GET() {
   try {
     const tickets = await prisma.supportTicket.findMany({
+      where: {
+        requesterId: { not: BigInt(36016928761) }
+      },
       select: {
         id: true,
         subject: true,
@@ -26,6 +30,7 @@ export async function GET() {
         createdAt: true,
         resolvedAt: true,
         isEscalated: true,
+        requesterId: true,
       },
       orderBy: { createdAt: 'desc' },
     })
