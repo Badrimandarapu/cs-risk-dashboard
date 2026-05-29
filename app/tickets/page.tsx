@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 interface Ticket {
   id: string
@@ -13,10 +14,16 @@ interface Ticket {
 }
 
 const priorityMap: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Urgent' }
-const statusMap: Record<number, string> = { 2: 'Open', 3: 'Pending', 4: 'Resolved', 5: 'Closed' }
+const statusColors: Record<string, string> = {
+  'Open': '#3b82f6',
+  'Pending': '#f59e0b',
+  'Resolved': '#10b981',
+  'Closed': '#6b7280',
+}
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
+  const [statusData, setStatusData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
@@ -25,7 +32,23 @@ export default function TicketsPage() {
   useEffect(() => {
     fetch('/api/tickets')
       .then(r => r.json())
-      .then(d => { setTickets(d.tickets || []); setLoading(false) })
+      .then(d => {
+        setTickets(d.tickets || [])
+        
+        // Calculate status distribution
+        const statusCount: Record<string, number> = {}
+        for (const t of d.tickets || []) {
+          statusCount[t.status] = (statusCount[t.status] || 0) + 1
+        }
+        
+        const chartData = Object.entries(statusCount).map(([status, count]) => ({
+          status,
+          count,
+          color: statusColors[status] || '#94a3b8'
+        }))
+        setStatusData(chartData)
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [])
 
@@ -46,10 +69,31 @@ export default function TicketsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Status Distribution Chart */}
+        {!loading && statusData.length > 0 && (
+          <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700 mb-8">
+            <h3 className="text-lg font-bold text-white mb-6">Ticket Status Distribution</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={statusData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="status" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" />
+                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px' }} />
+                <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                  {statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Filters */}
         <div className="mb-8 space-y-4">
           <input
             type="text"
-            placeholder="Search tickets..."
+            placeholder="Search tickets by subject..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-3 placeholder-slate-500"
@@ -80,6 +124,7 @@ export default function TicketsPage() {
           </div>
         </div>
 
+        {/* Tickets Table */}
         {loading ? (
           <div className="text-center py-12 text-slate-400">Loading tickets...</div>
         ) : (
@@ -87,6 +132,7 @@ export default function TicketsPage() {
             <table className="w-full">
               <thead className="bg-slate-900 border-b border-slate-700">
                 <tr>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Ticket ID</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Subject</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Account</th>
                   <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Status</th>
@@ -97,6 +143,7 @@ export default function TicketsPage() {
               <tbody>
                 {filtered.map((ticket) => (
                   <tr key={ticket.id} className="border-b border-slate-700 hover:bg-slate-700/30">
+                    <td className="px-6 py-4 text-sm font-mono text-blue-400">{ticket.id}</td>
                     <td className="px-6 py-4 text-sm text-white">{ticket.subject.substring(0, 50)}</td>
                     <td className="px-6 py-4 text-sm text-slate-300">{ticket.account.name}</td>
                     <td className="px-6 py-4 text-center">
