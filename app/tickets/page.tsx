@@ -35,10 +35,12 @@ export default function TicketsPage() {
       .then(d => {
         setTickets(d.tickets || [])
         
-        // Calculate status distribution
+        // Calculate status distribution - EXCLUDE CLOSED
         const statusCount: Record<string, number> = {}
         for (const t of d.tickets || []) {
-          statusCount[t.status] = (statusCount[t.status] || 0) + 1
+          if (t.status !== 'Closed') {
+            statusCount[t.status] = (statusCount[t.status] || 0) + 1
+          }
         }
         
         const chartData = Object.entries(statusCount).map(([status, count]) => ({
@@ -64,12 +66,12 @@ export default function TicketsPage() {
       <div className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <h1 className="text-3xl font-bold text-white">Support Tickets</h1>
-          <p className="text-slate-400 mt-1">{filtered.length} tickets</p>
+          <p className="text-slate-400 mt-1">{filtered.length} / {tickets.length} tickets</p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Status Distribution Chart */}
+        {/* Status Distribution Chart - EXCLUDES CLOSED */}
         {!loading && statusData.length > 0 && (
           <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700 mb-8">
             <h3 className="text-lg font-bold text-white mb-6">Ticket Status Distribution</h3>
@@ -86,6 +88,17 @@ export default function TicketsPage() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            <div className="mt-6 grid grid-cols-2 gap-4">
+              {statusData.map((item) => (
+                <div key={item.status} className="flex items-center gap-2 p-2 rounded-lg bg-slate-700/50">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-400">{item.status}</p>
+                    <p className="text-sm font-bold text-white">{item.count}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
