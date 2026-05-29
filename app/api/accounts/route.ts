@@ -38,18 +38,23 @@ export async function GET() {
         return createdDate >= twoMonthsAgo && createdDate < oneMonthAgo
       }).length
 
-      // Calculate ticket trend and health score
-      let health = 75 // default healthy
-      
+      // Calculate percentage change
+      let percentageChange = 0
       if (previousMonthTickets > 0) {
-        const percentageChange = ((thisMonthTickets - previousMonthTickets) / previousMonthTickets) * 100
-        if (percentageChange > 20) {
-          health = 25 + Math.random() * 15 // Critical: 25-40
-        } else if (percentageChange > 0) {
-          health = 45 + Math.random() * 20 // Warning: 45-65
-        } else {
-          health = 75 + Math.random() * 20 // Healthy: 75-95
-        }
+        percentageChange = ((thisMonthTickets - previousMonthTickets) / previousMonthTickets) * 100
+      }
+
+      // Determine health score based on percentage change
+      let health = 0
+      if (percentageChange > 20) {
+        // Critical: 0-40
+        health = 10 + Math.random() * 30 // 10-40
+      } else if (percentageChange > 0) {
+        // Warning: 41-69
+        health = 41 + Math.random() * 28 // 41-69
+      } else if (percentageChange <= 0) {
+        // Healthy: 70-100
+        health = 70 + Math.random() * 30 // 70-100
       }
 
       health = Math.round(health)
@@ -91,7 +96,7 @@ export async function GET() {
         ticketTrend: {
           thisMonth: thisMonthTickets,
           previousMonth: previousMonthTickets,
-          change: previousMonthTickets > 0 ? Math.round(((thisMonthTickets - previousMonthTickets) / previousMonthTickets) * 100) : 0
+          change: previousMonthTickets > 0 ? Math.round(percentageChange) : 0
         }
       }
     })
@@ -106,12 +111,13 @@ export async function GET() {
     const totalAccounts = formatted.length
     const healthy = formatted.filter((a: any) => a.status === 'healthy').length
     const critical = formatted.filter((a: any) => a.status === 'critical').length
+    const warning = formatted.filter((a: any) => a.status === 'warning').length
     const avgHealth = formatted.length > 0 ? Math.round(formatted.reduce((s: number, a: any) => s + a.health, 0) / formatted.length) : 0
 
     return NextResponse.json({ 
       accounts: formatted, 
       total: totalAccounts,
-      summary: { totalAccounts, healthy, critical, avgHealth }
+      summary: { totalAccounts, healthy, critical, warning, avgHealth }
     })
   } catch (err: unknown) {
     console.error('Accounts error:', err)
